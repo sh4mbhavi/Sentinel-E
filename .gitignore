@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Secrets / keys — NEVER commit
+*.key
+*.pem
+id_*
+*_key
+.env
+secrets.*
+
+# Runtime data / logs
+detection/alerts.jsonl
+detection/alerts.db
+*.log
+scratchpad/
+*.out

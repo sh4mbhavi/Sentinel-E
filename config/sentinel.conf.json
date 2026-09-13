@@ -1,0 +1,63 @@
+{
+  "_comment": "Central configuration for Sentinel-E. Thresholds are intentionally exposed so the analyst can tune sensitivity without touching detection code.",
+
+  "network": {
+    "pi_ip": "100.119.99.36",
+    "attacker_ip": "100.65.92.63",
+    "soc_ip": "100.91.16.98",
+    "pi_ssh_user": "clupai",
+    "pi_ssh_key": "~/.ssh/pi_key",
+    "monitor_iface": "tailscale0"
+  },
+
+  "panel": {
+    "http_port": 8080,
+    "login_ok_user": "admin"
+  },
+
+  "detection": {
+    "recon": {
+      "distinct_ports": 10,
+      "window_seconds": 15,
+      "_comment": "Recon (nmap) fires when a single source IP sends inbound SYNs to >= distinct_ports different ports within window_seconds."
+    },
+    "brute_force": {
+      "failed_logins": 5,
+      "window_seconds": 20,
+      "_comment": "Brute force (hydra) fires on >= failed_logins failed /login POSTs from one IP within window_seconds."
+    },
+    "injection": {
+      "_comment": "Regex-based: any shell metacharacter or command-substitution pattern in the ping host field.",
+      "patterns": ["\\$\\(", "`", ";", "\\|", "&", ">", "<", "\\bwhoami\\b", "\\bid\\b", "\\bcat\\b", "\\bnc\\b", "\\bbash\\b", "/bin/sh"]
+    },
+    "reverse_shell": {
+      "suspicious_ports": [4444, 1337, 9001, 9002, 5555, 8888],
+      "_comment": "Any outbound SYN from the Pi to a port in suspicious_ports (non-standard C2 ports) is flagged."
+    },
+    "privesc": {
+      "web_users": ["clupai", "www-data", "nobody"],
+      "_comment": "A web/service user invoking sudo to reach uid=0 in the auth log."
+    },
+    "persistence": {
+      "watch_files": ["/etc/passwd", "/etc/shadow", "/etc/ssh/sshd_config"],
+      "_comment": "A new UID-0 line in /etc/passwd, a /etc/shadow change, or an sshd_config modification."
+    },
+    "exfiltration": {
+      "sensitive_files": ["/root/camera_config.secret"],
+      "_comment": "Read (access) of a sensitive file correlated with an outbound transfer (SSH/SCP egress) within the correlation window."
+    },
+    "correlation_window_seconds": 60
+  },
+
+  "dashboard": {
+    "host": "0.0.0.0",
+    "http_port": 8760,
+    "_comment": "NOTE: 8760 is used by the existing 'frame' dashboard on this box. Sentinel-E uses 8770 below to avoid a clash.",
+    "port": 8770
+  },
+
+  "storage": {
+    "alerts_jsonl": "detection/alerts.jsonl",
+    "alerts_db": "detection/alerts.db"
+  }
+}
