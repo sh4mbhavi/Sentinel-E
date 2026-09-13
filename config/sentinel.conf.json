@@ -16,7 +16,7 @@
   },
 
   "demo": {
-    "attacker_attribution": true,
+    "attacker_attribution": false,
     "_comment": "The reproducible replay driver runs from the SOC host, which stands in for the Kali attacker (Kali has no SSH server we can drive, and WireGuard prevents source-IP spoofing). When true, the engine ATTRIBUTES stand-in traffic (any event whose source IP is the SOC) to network.attacker_ip, so stages 1-3 show a single coherent adversary origin on the console. This is attribution/relabelling for the demo, NOT spoofing; set false to see the true observed source IPs."
   },
 

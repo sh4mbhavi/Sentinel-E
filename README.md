@@ -99,25 +99,37 @@ avoided — it's used by an unrelated dashboard on this laptop.)*
 ./scripts/start_soc.sh
 #    → open http://100.91.16.98:8770/  in a browser
 
-# 3) Replay the attack and watch the dashboard react stage-by-stage
+# 3) Trigger the attack — TWO options:
+
+#   (a) REAL attack from the Kali box (genuine source IPs, no relabeling).
+#       Copy the runbook to Kali (100.65.92.63) and run it there:
+#         scp attack/kali_attack.sh kali@100.65.92.63:~ ; ssh kali 'chmod +x kali_attack.sh && ./kali_attack.sh'
+#       Requires demo.attacker_attribution=false (the current setting). Stages
+#       1-3 show Kali's real IP; stages 4-7 run on the Pi and show the Pi's IP.
+
+#   (b) Self-contained replay from the SOC (no Kali needed; for a quick local demo):
 python3 attack/replay.py            # full pace, good for screen recording
 python3 attack/replay.py --fast     # quicker
-python3 attack/replay.py --cleanup  # remove the backdoor account it creates
+python3 attack/replay.py --cleanup  # remove the backdoor account either path creates
 ```
 
 The dashboard shows the kill chain filling in, the ATT&CK matrix highlighting,
 counters ticking, and the alert feed streaming — all live over websockets.
 
-> **Note on source IPs (attacker attribution):** the self-contained `replay.py`
-> runs from the SOC host, which stands in for the Kali attacker (Kali has no SSH
-> server we can drive, and WireGuard prevents source-IP spoofing). With
-> `demo.attacker_attribution: true` in the config (the default), the engine
-> **attributes** that stand-in traffic to the configured attacker IP, so stages
-> 1–3 display a single coherent adversary origin of **`100.65.92.63`** on the
-> console. This is attribution/relabelling for the demo, **not** spoofing — set
-> the flag to `false` to see the true observed source IPs. Stages 4–7 run *on
-> the Pi* (driven through the injection point) and always show the Pi's real IP
-> (`100.119.99.36`); they are never relabelled.
+> **Note on source IPs.** The detection rules are **source-agnostic** — they
+> read the true origin of every observation (tcpdump captures the real SYN
+> source; the panel logs the real HTTP `remote_addr`). So a genuine attack from
+> Kali is displayed with real IPs: stages 1–3 → `100.65.92.63`, stages 4–7 →
+> the Pi `100.119.99.36` (those run on the Pi via the injection point).
+>
+> `config/sentinel.conf.json → demo.attacker_attribution` controls one optional
+> cosmetic behaviour and nothing else:
+> * **`false` (current setting):** no relabeling — every alert shows its genuine
+>   observed source IP. Use this for the real Kali attack (`attack/kali_attack.sh`).
+> * **`true`:** for the self-contained `attack/replay.py`, which runs from the
+>   SOC standing in for Kali, the engine *attributes* SOC-origin stand-in traffic
+>   to the attacker IP so stages 1–3 still show one coherent adversary origin.
+>   This is display attribution, **not** source-IP spoofing.
 
 ---
 
