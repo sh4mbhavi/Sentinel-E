@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SENTINEL-E — IoT Threat Detection Platform</title>
+<style>
+  :root{
+    --bg:#070a0f; --panel:#0d131c; --panel2:#111a26; --line:#1b2735;
+    --txt:#c9d6e5; --dim:#6b7c93; --accent:#2f81f7; --accent2:#39d0d8;
+    --low:#3fb950; --medium:#d29922; --high:#f0883e; --critical:#f85149;
+    --ok:#3fb950; --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1200px 600px at 70% -10%,#0e1622 0,var(--bg) 60%);
+    color:var(--txt);
+    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; overflow-x:hidden;
+  }
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:16px;
+    padding:14px 26px; border-bottom:1px solid var(--line);
+    background:linear-gradient(90deg,#0b1220,#0d1622);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:13px}
+  .shield{
+    width:40px;height:40px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:#04121f;font-size:20px;
+    box-shadow:0 0 22px rgba(47,129,247,.45);
+  }
+  .brand h1{font-size:19px;font-weight:700;letter-spacing:.5px}
+  .brand h1 span{color:var(--accent2)}
+  .brand .sub{font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+  .status{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:12px}
+  .pill{display:flex;align-items:center;gap:8px;color:var(--dim)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 0 rgba(0,0,0,0)}
+  .dot.live{background:var(--ok);animation:pulse 1.6s infinite}
+  .dot.warn{background:var(--medium)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,185,80,.5)}70%{box-shadow:0 0 0 8px rgba(63,185,80,0)}100%{box-shadow:0 0 0 0 rgba(63,185,80,0)}}
+  .clock{font-family:var(--mono);color:var(--txt)}
+
+  /* ---------- layout ---------- */
+  .wrap{padding:20px 26px;display:grid;gap:18px;
+        grid-template-columns:1.15fr .85fr;}
+  .col{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+         overflow:hidden}
+  .panel h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
+            padding:13px 18px;border-bottom:1px solid var(--line);display:flex;
+            align-items:center;gap:10px;background:var(--panel2)}
+  .panel h2 .tag{margin-left:auto;font-size:10px;color:var(--dim);letter-spacing:1px}
+
+  /* ---------- counters ---------- */
+  .counters{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        padding:16px 14px;position:relative;overflow:hidden}
+  .stat .n{font-size:30px;font-weight:800;font-family:var(--mono);line-height:1}
+  .stat .l{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-top:8px}
+  .stat.total .n{color:var(--txt)} .stat.low .n{color:var(--low)}
+  .stat.medium .n{color:var(--medium)} .stat.high .n{color:var(--high)}
+  .stat.critical .n{color:var(--critical)}
+  .stat::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:100%;opacity:.8}
+  .stat.total::after{background:var(--accent)} .stat.low::after{background:var(--low)}
+  .stat.medium::after{background:var(--medium)} .stat.high::after{background:var(--high)}
+  .stat.critical::after{background:var(--critical)}
+  .flash{animation:flash .8s}
+  @keyframes flash{0%{background:#1a2740}100%{background:var(--panel)}}
+
+  /* ---------- kill chain ---------- */
+  .chain{display:flex;gap:0;padding:18px;align-items:stretch;overflow-x:auto}
+  .stage{flex:1;min-width:104px;position:relative;text-align:center;padding:0 6px}
+  .stage .node{
+    width:46px;height:46px;border-radius:12px;margin:0 auto 10px;
+    border:2px solid var(--line);background:var(--panel2);
+    display:flex;align-items:center;justify-content:center;font-weight:800;
+    color:var(--dim);font-family:var(--mono);font-size:16px;transition:.35s;position:relative;z-index:2}
+  .stage .nm{font-size:11px;color:var(--dim);line-height:1.3;transition:.35s}
+  .stage .tech{font-size:9.5px;color:#4a586b;font-family:var(--mono);margin-top:3px}
+  .stage:not(:last-child)::after{content:'';position:absolute;top:23px;left:60%;width:80%;
+    height:2px;background:var(--line);z-index:1;transition:.35s}
+  .stage.fired .node{border-color:var(--critical);color:#fff;
+    background:linear-gradient(135deg,var(--critical),#b62324);
+    box-shadow:0 0 18px rgba(248,81,73,.6)}
+  .stage.fired .nm{color:var(--txt)}
+  .stage.fired::after{background:linear-gradient(90deg,var(--critical),var(--line))}
+  .stage.just .node{animation:pop .6s}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+
+  /* ---------- mitre ---------- */
+  .mitre{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:16px}
+  .tech-card{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:var(--panel2);
+             transition:.3s;opacity:.55}
+  .tech-card .id{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--dim)}
+  .tech-card .nm{font-size:11px;color:var(--dim);margin-top:3px}
+  .tech-card.fired{opacity:1;border-color:var(--critical);
+    background:linear-gradient(135deg,rgba(248,81,73,.14),var(--panel2))}
+  .tech-card.fired .id{color:var(--critical)} .tech-card.fired .nm{color:var(--txt)}
+
+  /* ---------- topology ---------- */
+  .topo{display:flex;align-items:center;justify-content:space-around;padding:22px 14px;gap:8px}
+  .node2{text-align:center;flex:1}
+  .node2 .box{border:1px solid var(--line);border-radius:11px;padding:14px 8px;background:var(--panel2)}
+  .node2 .ico{font-size:24px} .node2 .t{font-size:12px;font-weight:700;margin-top:6px}
+  .node2 .ip{font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:3px}
+  .node2.attacker .box{border-color:var(--critical)}
+  .node2.soc .box{border-color:var(--accent)}
+  .arrow{flex:.6;text-align:center;color:var(--dim);font-size:11px}
+  .arrow .ln{height:2px;background:linear-gradient(90deg,var(--line),var(--accent2),var(--line));margin:6px 0}
+  .arrow.attack .ln{background:linear-gradient(90deg,var(--line),var(--critical),var(--line))}
+  .arrow.beam .ln{animation:beam 1.2s infinite}
+  @keyframes beam{0%,100%{opacity:.35}50%{opacity:1}}
+
+  /* ---------- alert feed ---------- */
+  .feed{max-height:520px;overflow-y:auto}
+  .alert{display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);
+         cursor:pointer;transition:.15s;position:relative}
+  .alert:hover{background:var(--panel2)}
+  .alert .bar{width:4px;border-radius:3px;flex:0 0 4px}
+  .alert.low .bar{background:var(--low)} .alert.medium .bar{background:var(--medium)}
+  .alert.high .bar{background:var(--high)} .alert.critical .bar{background:var(--critical)}
+  .alert .body{flex:1;min-width:0}
+  .alert .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .sev{font-size:9.5px;font-weight:800;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+  .sev.low{background:rgba(63,185,80,.18);color:var(--low)}
+  .sev.medium{background:rgba(210,153,34,.2);color:var(--medium)}
+  .sev.high{background:rgba(240,136,62,.2);color:var(--high)}
+  .sev.critical{background:rgba(248,81,73,.22);color:var(--critical)}
+  .alert .sname{font-weight:700;font-size:13.5px;color:var(--txt)}
+  .alert .mid{font-family:var(--mono);font-size:10.5px;color:var(--accent2);
+              border:1px solid var(--line);padding:1px 6px;border-radius:4px}
+  .alert .desc{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.45}
+  .alert .meta{font-size:10.5px;color:#516179;font-family:var(--mono);margin-top:6px;
+               display:flex;gap:14px;flex-wrap:wrap}
+  .newin{animation:slidein .5s}
+  @keyframes slidein{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:none}}
+  .empty{padding:40px;text-align:center;color:var(--dim);font-size:13px}
+
+  /* ---------- timeline ---------- */
+  .timeline{padding:14px 18px;max-height:210px;overflow-y:auto}
+  .tl{display:flex;gap:11px;align-items:flex-start;padding:6px 0}
+  .tl .tt{font-family:var(--mono);font-size:10.5px;color:var(--dim);flex:0 0 66px}
+  .tl .td{width:9px;height:9px;border-radius:50%;margin-top:3px;flex:0 0 9px}
+  .tl .tx{font-size:12px;color:var(--txt)}
+  .tl.low .td{background:var(--low)} .tl.medium .td{background:var(--medium)}
+  .tl.high .td{background:var(--high)} .tl.critical .td{background:var(--critical)}
+
+  /* ---------- drawer ---------- */
+  .drawer{position:fixed;top:0;right:-460px;width:440px;height:100%;
+    background:var(--panel);border-left:1px solid var(--line);z-index:40;
+    transition:right .3s;overflow-y:auto;box-shadow:-20px 0 40px rgba(0,0,0,.5)}
+  .drawer.open{right:0}
+  .drawer .dh{padding:18px;border-bottom:1px solid var(--line);display:flex;
+              align-items:center;gap:10px;background:var(--panel2)}
+  .drawer .dh .x{margin-left:auto;cursor:pointer;color:var(--dim);font-size:20px}
+  .drawer .dc{padding:18px}
+  .kv{display:flex;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .kv .k{flex:0 0 130px;color:var(--dim);text-transform:uppercase;font-size:10.5px;letter-spacing:.8px;padding-top:2px}
+  .kv .v{flex:1;color:var(--txt);word-break:break-word}
+  .kv .v.mono{font-family:var(--mono);font-size:12px}
+  pre.detail{background:#05070c;border:1px solid var(--line);border-radius:8px;padding:12px;
+             font-family:var(--mono);font-size:11.5px;color:#8fa3bd;white-space:pre-wrap;margin-top:8px}
+  .ticker{font-family:var(--mono);font-size:11px;color:#4a586b;padding:9px 18px;
+          border-top:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="shield">S</div>
+    <div>
+      <h1>SENTINEL-<span>E</span></h1>
+      <div class="sub">IoT Threat Detection Platform</div>
+    </div>
+  </div>
+  <div class="status">
+    <div class="pill"><span class="dot" id="wsdot"></span><span id="wstext">connecting…</span></div>
+    <div class="pill"><span class="dot" id="sensordot"></span><span id="sensortext">sensor: —</span></div>
+    <div class="pill clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT COLUMN -->
+  <div class="col">
+    <div class="counters" id="counters">
+      <div class="stat total"><div class="n" id="c-total">0</div><div class="l">Total Alerts</div></div>
+      <div class="stat critical"><div class="n" id="c-critical">0</div><div class="l">Critical</div></div>
+      <div class="stat high"><div class="n" id="c-high">0</div><div class="l">High</div></div>
+      <div class="stat medium"><div class="n" id="c-medium">0</div><div class="l">Medium</div></div>
+      <div class="stat low"><div class="n" id="c-low">0</div><div class="l">Low</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Cyber Kill Chain <span class="tag" id="chain-tag">0 / 7 stages triggered</span></h2>
+      <div class="chain" id="chain"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Live Alert Feed <span class="tag">newest first</span></h2>
+      <div class="feed" id="feed"><div class="empty" id="feed-empty">Awaiting telemetry… the feed updates the instant a detection fires.</div></div>
+      <div class="ticker" id="ticker">telemetry stream idle</div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="col">
+    <div class="panel">
+      <h2>Network Topology</h2>
+      <div class="topo">
+        <div class="node2 attacker"><div class="box"><div class="ico">💀</div><div class="t">Attacker</div><div class="ip" id="ip-att">Kali</div></div></div>
+        <div class="arrow attack" id="arr1"><div>attack</div><div class="ln"></div><div>▶</div></div>
+        <div class="node2 target"><div class="box"><div class="ico">📷</div><div class="t">IoT Target</div><div class="ip" id="ip-pi">Pi</div></div></div>
+        <div class="arrow beam" id="arr2"><div>telemetry</div><div class="ln"></div><div>▶</div></div>
+        <div class="node2 soc"><div class="box"><div class="ico">🛡️</div><div class="t">Sentinel-E SOC</div><div class="ip" id="ip-soc">Fedora</div></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>MITRE ATT&CK Coverage</h2>
+      <div class="mitre" id="mitre"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Attack Timeline</h2>
+      <div class="timeline" id="timeline"><div class="empty">No events yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="dh"><span class="sev" id="d-sev">—</span><b id="d-title">Alert</b><span class="x" onclick="closeDrawer()">✕</span></div>
+  <div class="dc" id="d-body"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let META = null;
+const SEV_ORDER = ['low','medium','high','critical'];
+
+// ---- clock ----
+setInterval(()=>{ $('#clock').textContent = new Date().toLocaleTimeString(); },1000);
+
+// ---- build scaffolding from /api/meta ----
+async function boot(){
+  META = await (await fetch('/api/meta')).json();
+  const n = META.network;
+  $('#ip-att').textContent = n.attacker_ip;
+  $('#ip-pi').textContent  = n.pi_ip;
+  $('#ip-soc').textContent = n.soc_ip;
+
+  const stages = Object.entries(META.stages).sort((a,b)=>a[1].num-b[1].num);
+  // kill chain
+  $('#chain').innerHTML = stages.map(([k,s])=>`
+    <div class="stage" data-stage="${k}">
+      <div class="node">${s.num}</div>
+      <div class="nm">${s.name}</div>
+      <div class="tech">${s.technique_id}</div>
+    </div>`).join('');
+  // mitre matrix (unique technique cards)
+  $('#mitre').innerHTML = stages.map(([k,s])=>`
+    <div class="tech-card" data-stage="${k}">
+      <div class="id">${s.technique_id}</div>
+      <div class="nm">${s.technique_name}</div>
+    </div>`).join('');
+
+  const b = await (await fetch('/api/bootstrap')).json();
+  applyCounts(b.counts);
+  (b.fired_stages||[]).forEach(markStage);
+  (b.history||[]).forEach(a=>addAlert(a,false));
+  setSensor(b.sensor_status);
+  connect();
+}
+
+function applyCounts(c){
+  ['total','critical','high','medium','low'].forEach(k=>{
+    const el = $('#c-'+k); if(el) el.textContent = c[k]||0;
+  });
+}
+function markStage(k, animate){
+  document.querySelectorAll(`.stage[data-stage="${k}"]`).forEach(e=>{
+    e.classList.add('fired'); if(animate){e.classList.add('just');setTimeout(()=>e.classList.remove('just'),700);}
+  });
+  document.querySelectorAll(`.tech-card[data-stage="${k}"]`).forEach(e=>e.classList.add('fired'));
+  const fired = document.querySelectorAll('.stage.fired').length;
+  $('#chain-tag').textContent = `${fired} / 7 stages triggered`;
+}
+
+function addAlert(a, isNew){
+  $('#feed-empty') && $('#feed-empty').remove();
+  const feed = $('#feed');
+  const div = document.createElement('div');
+  div.className = `alert ${a.severity}` + (isNew?' newin':'');
+  const t = new Date(a.ts).toLocaleTimeString();
+  div.innerHTML = `<div class="bar"></div><div class="body">
+      <div class="top">
+        <span class="sev ${a.severity}">${a.severity}</span>
+        <span class="sname">${a.stage_name}</span>
+        <span class="mid">${a.technique_id}</span>
+      </div>
+      <div class="desc">${escapeHtml(a.description)}</div>
+      <div class="meta"><span>⏱ ${t}</span><span>◈ ${a.phase}</span><span>src ${a.src_ip}</span></div>
+    </div>`;
+  div.onclick = ()=>openDrawer(a);
+  feed.insertBefore(div, feed.firstChild);
+  while(feed.children.length>120) feed.removeChild(feed.lastChild);
+
+  // timeline
+  const tl = $('#timeline'); const em = tl.querySelector('.empty'); if(em) em.remove();
+  const row = document.createElement('div');
+  row.className = `tl ${a.severity}`;
+  row.innerHTML = `<span class="tt">${t}</span><span class="td"></span><span class="tx">${a.stage_name} — ${a.technique_id}</span>`;
+  tl.insertBefore(row, tl.firstChild);
+  while(tl.children.length>60) tl.removeChild(tl.lastChild);
+}
+
+function openDrawer(a){
+  $('#d-sev').className = 'sev '+a.severity; $('#d-sev').textContent = a.severity;
+  $('#d-title').textContent = a.stage_name;
+  const rows = [
+    ['Stage', `#${a.stage_num} — ${a.stage_name}`],
+    ['MITRE Technique', `${a.technique_id} · ${a.technique_name}`],
+    ['Kill-Chain Phase', a.phase],
+    ['Severity', a.severity.toUpperCase()],
+    ['Source IP', a.src_ip],
+    ['Detected (SOC)', new Date(a.ts).toLocaleString()],
+    ['Observed (Pi)', a.observed_ts ? new Date(a.observed_ts).toLocaleString() : '—'],
+    ['Description', a.description],
+  ];
+  let html = rows.map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v ${k==='Source IP'?'mono':''}">${escapeHtml(String(v))}</div></div>`).join('');
+  if(a.detail && Object.keys(a.detail).length)
+    html += `<pre class="detail">${escapeHtml(JSON.stringify(a.detail,null,2))}</pre>`;
+  $('#d-body').innerHTML = html;
+  $('#drawer').classList.add('open');
+}
+function closeDrawer(){ $('#drawer').classList.remove('open'); }
+
+function setSensor(s){
+  $('#sensortext').textContent = 'sensor: '+s;
+  const d=$('#sensordot');
+  d.className='dot'+(/connected/.test(s)?' live':(/retry|disconnect|fail|offline/.test(s)?' warn':''));
+  $('#arr2').classList.toggle('beam', /connected/.test(s));
+}
+
+let flashArr=null;
+function attackBeam(){ $('#arr1').classList.add('beam'); clearTimeout(flashArr);
+  flashArr=setTimeout(()=>$('#arr1').classList.remove('beam'),4000); }
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// ---- websocket ----
+function connect(){
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = ()=>{ $('#wsdot').className='dot live'; $('#wstext').textContent='connected'; };
+  ws.onclose = ()=>{ $('#wsdot').className='dot warn'; $('#wstext').textContent='reconnecting…'; setTimeout(connect,2000); };
+  ws.onmessage = e=>{
+    const m = JSON.parse(e.data);
+    if(m.type==='status'){ setSensor(m.sensor); }
+    else if(m.type==='telemetry'){
+      const ev=m.event;
+      $('#ticker').textContent = `▸ ${ev.source}/${ev.event} `+
+        Object.entries(ev).filter(([k])=>!['ts','source','event'].includes(k))
+        .map(([k,v])=>`${k}=${v}`).join(' ');
+    }
+    else if(m.type==='alert'){
+      applyCounts(m.counts);
+      markStage(m.alert.stage, true);
+      addAlert(m.alert, true);
+      attackBeam();
+      pulseCounter(m.alert.severity);
+    }
+  };
+}
+function pulseCounter(sev){
+  ['total',sev].forEach(k=>{const el=$('#c-'+k)?.closest('.stat'); if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}});
+}
+boot();
+</script>
+</body>
+</html>
