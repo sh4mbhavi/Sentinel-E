@@ -34,6 +34,14 @@ Enclose all three in a rounded container labelled **“Tailscale overlay network
    *(In the self-contained replay this egress points at the SOC standing in for
    Kali; annotate as “→ attacker (Kali in a live engagement)”.)*
 
+**Attacker attribution (demo):** the reproducible `replay.py` sources stages 1–3
+from the SOC host (Kali runs no SSH server we can drive, and WireGuard prevents
+source-IP spoofing). With `demo.attacker_attribution: true`, the engine
+attributes that stand-in traffic to `network.attacker_ip`, so the console shows
+a single coherent adversary origin (`100.65.92.63`) for recon/brute/injection.
+This is display attribution, **not** spoofing; Pi-origin stages 4–7 keep the
+Pi's real IP. Draw the attacker box as the labelled origin of stages 1–3.
+
 ### Endpoints to annotate on the Target box
 `camera_panel.py` listening on **:8080**; `sentinel_sensor.py` running as **root**.
 

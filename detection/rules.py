@@ -68,6 +68,10 @@ class DetectionEngine:
     def __init__(self, config):
         self.cfg = config["detection"]
         self.pi_ip = config["network"]["pi_ip"]
+        self.soc_ip = config["network"]["soc_ip"]
+        self.attacker_ip = config["network"]["attacker_ip"]
+        # Demo attribution: the SOC-hosted replay stands in for the Kali attacker.
+        self.attribute = config.get("demo", {}).get("attacker_attribution", True)
         self._alert_seq = 0
 
         # sliding-window state
@@ -89,6 +93,20 @@ class DetectionEngine:
         self._injection_re = [re.compile(p) for p in self.cfg["injection"]["patterns"]]
 
     # -- helpers ------------------------------------------------------------
+    def _attribute(self, ip):
+        """Map an observed source IP to its DISPLAY origin.
+
+        In demo mode the reproducible replay runs from the SOC host, so recon /
+        brute-force / injection genuinely arrive from the SOC's Tailscale IP. We
+        attribute that stand-in traffic to the configured Kali attacker IP so the
+        console shows one coherent adversary origin for stages 1-3. This is
+        attribution/relabelling only — it never rewrites Pi-origin events
+        (stages 4-7 keep the Pi's real IP) and is not source-IP spoofing.
+        """
+        if self.attribute and ip == self.soc_ip:
+            return self.attacker_ip
+        return ip
+
     def _cooldown_ok(self, stage, key, now):
         last = self._last_fired.get((stage, key), 0)
         if now - last < self._cooldowns.get(stage, 5):
@@ -136,9 +154,10 @@ class DetectionEngine:
             distinct = {p for _, p in dq}
             if len(distinct) >= self.cfg["recon"]["distinct_ports"] and \
                     self._cooldown_ok("recon", ip, now):
+                disp = self._attribute(ip)   # show a coherent attacker origin
                 alerts.append(self._alert(
-                    "recon", ip,
-                    f"Port scan: {len(distinct)} distinct ports probed from {ip} "
+                    "recon", disp,
+                    f"Port scan: {len(distinct)} distinct ports probed from {disp} "
                     f"in {win}s (nmap-style service discovery).",
                     observed_ts=ev.get("ts"),
                     ports=sorted(distinct)))
@@ -169,9 +188,10 @@ class DetectionEngine:
                 dq.popleft()
             if len(dq) >= self.cfg["brute_force"]["failed_logins"] and \
                     self._cooldown_ok("brute_force", ip, now):
+                disp = self._attribute(ip)
                 alerts.append(self._alert(
-                    "brute_force", ip,
-                    f"{len(dq)} failed logins from {ip} in {win}s against the "
+                    "brute_force", disp,
+                    f"{len(dq)} failed logins from {disp} in {win}s against the "
                     f"camera panel — credential brute-force.",
                     observed_ts=ev.get("ts"), attempts=len(dq)))
 
@@ -180,8 +200,9 @@ class DetectionEngine:
             host = ev.get("host", "") or ""
             hit = next((rx.pattern for rx in self._injection_re if rx.search(host)), None)
             if hit and self._cooldown_ok("injection", ev.get("src_ip"), now):
+                disp = self._attribute(ev.get("src_ip"))
                 alerts.append(self._alert(
-                    "injection", ev.get("src_ip"),
+                    "injection", disp,
                     f"Shell metacharacters in ping 'host' field: {host!r} "
                     f"(matched /{hit}/) — command injection / filter bypass.",
                     observed_ts=ev.get("ts"), host=host, pattern=hit))

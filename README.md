@@ -108,11 +108,16 @@ python3 attack/replay.py --cleanup  # remove the backdoor account it creates
 The dashboard shows the kill chain filling in, the ATT&CK matrix highlighting,
 counters ticking, and the alert feed streaming — all live over websockets.
 
-> **Note on source IPs:** in a real engagement stages 1–3 originate from the
-> Kali box (100.65.92.63). The self-contained `replay.py` runs from the SOC
-> host, which stands in for Kali, so those alerts show the SOC's Tailscale IP as
-> the source. The detection logic is identical either way. Stages 4–7 run *on
-> the Pi* (driven through the injection point) and correctly show the Pi's IP.
+> **Note on source IPs (attacker attribution):** the self-contained `replay.py`
+> runs from the SOC host, which stands in for the Kali attacker (Kali has no SSH
+> server we can drive, and WireGuard prevents source-IP spoofing). With
+> `demo.attacker_attribution: true` in the config (the default), the engine
+> **attributes** that stand-in traffic to the configured attacker IP, so stages
+> 1–3 display a single coherent adversary origin of **`100.65.92.63`** on the
+> console. This is attribution/relabelling for the demo, **not** spoofing — set
+> the flag to `false` to see the true observed source IPs. Stages 4–7 run *on
+> the Pi* (driven through the injection point) and always show the Pi's real IP
+> (`100.119.99.36`); they are never relabelled.
 
 ---
 
