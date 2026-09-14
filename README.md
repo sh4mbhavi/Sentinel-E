@@ -1,10 +1,10 @@
 <div align="center">
 
-# ⣿ SENTINEL-E
+# SENTINEL-E
 
 ### Real-Time SOC Detection Platform & IoT Cyber Range
 
-**Stream live host and network telemetry, detect a full adversary kill chain as it happens, and watch it unfold on a real-time security console — mapped end-to-end to MITRE ATT&CK.**
+**Stream live host and network telemetry, detect a full adversary kill chain as it happens, and watch it unfold on a real-time security console,  mapped end-to-end to MITRE ATT&CK!**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-d8b0c1.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-1f6feb.svg)](https://www.python.org/)
