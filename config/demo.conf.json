@@ -1,0 +1,51 @@
+{
+  "_comment": "Hardware-free DEMO profile for Sentinel-E. Runs the entire platform on a single machine with no external target/attacker. A local telemetry generator (demo/sim_sensor.py) emits the same NDJSON event schema the hardware sensor produces; the UNMODIFIED detection engine decides every alert. IPs below are illustrative fixtures for the simulated attack.",
+
+  "network": {
+    "pi_ip": "10.10.10.5",
+    "attacker_ip": "10.13.37.37",
+    "soc_ip": "127.0.0.1",
+    "pi_ssh_user": "n/a",
+    "pi_ssh_key": "n/a",
+    "monitor_iface": "n/a"
+  },
+
+  "panel": {
+    "http_port": 8080,
+    "login_ok_user": "admin"
+  },
+
+  "demo": {
+    "attacker_attribution": false,
+    "_comment": "Demo shows the raw observed source IP of every event (no relabelling)."
+  },
+
+  "sensor": {
+    "mode": "demo",
+    "_comment": "mode=demo makes the ingestor spawn the LOCAL telemetry generator instead of streaming from a remote host over SSH. mode=hardware (the default in sentinel.conf.json) uses the real Pi sensor."
+  },
+
+  "detection": {
+    "recon": { "distinct_ports": 10, "window_seconds": 15 },
+    "brute_force": { "failed_logins": 5, "window_seconds": 20 },
+    "injection": {
+      "patterns": ["\\$\\(", "`", ";", "\\|", "&", ">", "<", "\\bwhoami\\b", "\\bid\\b", "\\bcat\\b", "\\bnc\\b", "\\bbash\\b", "/bin/sh"]
+    },
+    "reverse_shell": { "suspicious_ports": [4444, 1337, 9001, 9002, 5555, 8888] },
+    "privesc": { "web_users": ["clupai", "www-data", "nobody"] },
+    "persistence": { "watch_files": ["/etc/passwd", "/etc/shadow", "/etc/ssh/sshd_config"] },
+    "exfiltration": { "sensitive_files": ["/root/camera_config.secret"] },
+    "correlation_window_seconds": 60
+  },
+
+  "dashboard": {
+    "host": "0.0.0.0",
+    "http_port": 8760,
+    "port": 8770
+  },
+
+  "storage": {
+    "alerts_jsonl": "detection/demo_alerts.jsonl",
+    "alerts_db": "detection/demo_alerts.db"
+  }
+}

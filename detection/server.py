@@ -30,7 +30,13 @@ from ingest import Ingestor  # noqa: E402
 
 
 def load_config():
-    with open(os.path.join(ROOT, "config", "sentinel.conf.json")) as f:
+    # SENTINEL_CONFIG selects the active profile; defaults to the hardware config.
+    # The hardware-free demo sets it to config/demo.conf.json.
+    path = os.environ.get("SENTINEL_CONFIG",
+                          os.path.join(ROOT, "config", "sentinel.conf.json"))
+    if not os.path.isabs(path):
+        path = os.path.join(ROOT, path)
+    with open(path) as f:
         return json.load(f)
 
 
