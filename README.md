@@ -1,192 +1,177 @@
-# Sentinel-E — Real-Time SOC Detection Platform
+<div align="center">
 
-Sentinel-E is a lightweight **Security Operations Centre (SOC)** platform. It
-ingests live host and network telemetry, applies a **detection ruleset mapped to
-MITRE ATT&CK** across the cyber kill chain, correlates the results into
-prioritised alerts, and streams them to a live web console in real time.
+# ⣿ SENTINEL-E
 
-The ruleset targets **common intrusion techniques** rather than any single
-exploit — network reconnaissance, credential brute-forcing, command injection /
-RCE, command-and-control over non-standard ports, privilege escalation,
-persistence, and data exfiltration. Every rule is **behavioural and
-threshold-driven**: it fires on the activity pattern (e.g. "one source touches
-many ports in a short window"), not on a hardcoded signature, so it generalises
-to any monitored host emitting the same telemetry.
+### Real-Time SOC Detection Platform & IoT Cyber Range
 
-To prove the pipeline end to end, Sentinel-E is validated against a live
-adversary scenario: a Kali attacker compromising a deliberately-vulnerable IoT
-security camera (a Raspberry Pi admin panel) through a full seven-stage kill
-chain. The SOC streams telemetry off the target, detects every stage as it
-happens, and lights up the kill chain and ATT&CK matrix on the dashboard.
+**Stream live host and network telemetry, detect a full adversary kill chain as it happens, and watch it unfold on a real-time security console — mapped end-to-end to MITRE ATT&CK.**
 
-It was built for a university ethical-hacking (red vs blue) assignment.
+[![License: MIT](https://img.shields.io/badge/License-MIT-d8b0c1.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-1f6feb.svg)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/platform-linux-303030.svg)](#)
+[![ATT&CK](https://img.shields.io/badge/MITRE_ATT%26CK-7_techniques-ff8090.svg)](#-mitre-attck-coverage)
+[![Demo](https://img.shields.io/badge/demo-hardware--free-8fe6b0.svg)](#-quickstart--clone-and-run-in-60-seconds)
+[![Status](https://img.shields.io/badge/status-active-8fe6b0.svg)](#)
 
-> **Everything here is real.** Detections run on live telemetry streamed from the
-> monitored host; the validation attack genuinely exploits the target. Nothing is
-> faked or pre-recorded.
+</div>
 
 ---
 
-## Architecture at a glance
+## What is Sentinel-E?
+
+**Sentinel-E is a self-contained Security Operations Centre (SOC) in a box.** It ingests a live stream of host and network telemetry, runs a behavioural detection engine whose rules are mapped to the MITRE ATT&CK framework, correlates findings across the cyber kill chain, and streams prioritised alerts to a professional real-time web console — no page refresh, no polling, no batch jobs.
+
+It ships with a complete **IoT cyber range**: a deliberately vulnerable smart-camera admin panel as the target, a scripted adversary that drives a genuine seven-stage intrusion, and the blue-team detection stack that catches every stage live. Every alert on the dashboard is produced by the detection engine reasoning over real telemetry — nothing is pre-recorded or faked.
+
+Two ways to run it:
+
+- 🖥️ **Hardware-free demo** — one command, one machine, no external hosts. A local telemetry generator emits the exact event schema a compromised device produces; the unmodified engine detects the whole kill chain live. *You can experience the entire platform in under a minute.*
+- 🔌 **Full hardware cyber range** — a real target device, a real attacker box, and real network telemetry streamed to the SOC over a mesh overlay, for hands-on red-vs-blue training against a live host.
+
+---
+
+## ✨ Features
+
+- **Genuinely real-time pipeline** — event-driven telemetry ingestion → detection engine → alert store → WebSocket → live dashboard. Millisecond latency, zero polling.
+- **Behavioural detection engine** — seven stateful rules with sliding-window thresholds and cross-signal correlation. Rules fire on *activity patterns*, not brittle signatures, and generalise to any monitored host emitting the same telemetry.
+- **Full MITRE ATT&CK mapping** — every detection is tagged with its technique ID, tactic, and cyber-kill-chain phase, and rendered on a live ATT&CK matrix.
+- **Professional SOC console** — a dark, high-contrast operations dashboard: KPI tiles, alert-volume and severity charts, a live SIEM-style alert table, the ATT&CK matrix, a cyber-kill-chain tracker, a detection-rule catalogue, and live telemetry-source health.
+- **Kill-chain correlation** — raw observations are stitched into the correct attack stage with severity, source attribution, and human-readable context.
+- **Hardware-free demo mode** — the entire platform on a laptop, no lab required.
+- **Pluggable telemetry** — swap between the local demo generator and a real multi-source hardware sensor (`journalctl` + `tcpdump` + `inotify`) via one config flag.
+- **Durable alert store** — every alert persisted to JSON-Lines *and* SQLite; the dashboard replays recent history on reconnect.
+
+---
+
+## 🏛️ Architecture at a glance
 
 ```
-   ATTACKER                 TARGET (IoT)                    SOC (this platform)
-   Kali                     Raspberry Pi                    Fedora laptop
-   100.65.92.63             100.119.99.36                   100.91.16.98
-   ──────────               ────────────                    ─────────────
-   nmap / hydra   ───────▶  camera_panel.py (:8080)
-   $(...) inject  ───────▶  vulnerable ping tool
-                            sentinel_sensor.py (root)
-                              ├ journalctl -f  (app + sudo + sshd)
-                              ├ tcpdump        (recon + C2 + exfil egress)
-                              └ inotifywait    (/etc/passwd, secret file)
-                                     │
-                                     │  persistent SSH, live JSON stream
-                                     ▼
-                            detection/ingest.py  ──▶  detection/rules.py
-                                                          │ (7 detection rules)
-                                                          ▼
-                                                     alert store (JSONL + SQLite)
-                                                          │
-                                                          ▼  websocket
-                                                     LIVE DASHBOARD  (:8770)
+        ADVERSARY                 TARGET (IoT device)              SENTINEL-E SOC
+   ┌───────────────┐          ┌──────────────────────┐        ┌────────────────────┐
+   │ recon (nmap)  │  attack  │  vulnerable panel     │        │  ingestion          │
+   │ brute (hydra) │ ───────▶ │  :8080  (web login +  │        │   (live stream)     │
+   │ $(...) inject │          │   command injection)  │        │        │            │
+   │ C2 / exfil    │ ◀─────── │                       │        │        ▼            │
+   └───────────────┘   pull   │  telemetry sensor     │        │  detection engine   │
+                              │   ├ auth  (journald)  │  live  │   7 ATT&CK rules    │
+                              │   ├ net   (tcpdump)   │ ─────▶ │        │            │
+                              │   └ files (inotify)   │ stream │        ▼            │
+                              └──────────────────────┘        │   alert store       │
+                                                              │   (JSONL + SQLite)  │
+                                                              │        │            │
+                                                              │        ▼  WebSocket │
+                                                              │   LIVE DASHBOARD    │
+                                                              │        :8770        │
+                                                              └────────────────────┘
+
+   Hardware-free demo: the target + adversary + sensor above are replaced by a single
+   local telemetry generator. The ingestion → engine → store → dashboard path is identical.
 ```
 
-All three machines sit on a **Tailscale** overlay network. See
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the three full diagrams
-(topology, detection data-flow, attack-to-detection mapping).
+Full component-by-component breakdown, data-flow, and diagrams: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
-## Detection coverage — common attack techniques (MITRE ATT&CK)
+## 🚀 Quickstart — clone and run in 60 seconds
 
-Sentinel-E ships behavioural detection rules for the technique classes below.
-Each rule is configurable in `config/sentinel.conf.json` and mapped to a MITRE
-ATT&CK technique and cyber-kill-chain phase. The IoT-camera scenario exercises
-all of them in sequence, but the rules apply to **any** monitored host that
-emits the same authentication, process, network and file-integrity telemetry.
-
-| Technique class | What the rule detects (behavioural) | MITRE ATT&CK | Kill-chain phase | Severity |
-|---|---|---|---|---|
-| Network reconnaissance | one source probing many distinct ports in a short window | **T1046** Network Service Discovery | Reconnaissance | medium |
-| Credential brute-force | repeated failed authentications from one source | **T1110** Brute Force | Weaponisation / Delivery | high |
-| Command injection / RCE | shell metacharacters / command-substitution in web input | **T1059** Command & Scripting Interpreter | Exploitation | high |
-| C2 / reverse shell | outbound connection to a non-standard / suspicious port | **T1571** Non-Standard Port | Installation | critical |
-| Privilege escalation | a service/web user escalating to uid 0 via sudo | **T1548** Abuse Elevation Control Mechanism | Exploitation / Installation | critical |
-| Persistence | a new UID-0 account or an `sshd_config` modification | **T1136** Create Account | Command & Control | critical |
-| Data exfiltration | sensitive-file read correlated with an outbound transfer | **T1041 / T1048** Exfiltration | Actions on Objectives | critical |
-
-Coverage is extensible by design: a new detection is a rule in
-`detection/rules.py` plus a threshold in the config — no architectural change.
-
-### Validation scenario — the seven-stage attack chain
-
-The rules above are demonstrated against a real intrusion of the IoT camera:
-recon (nmap) → brute-force (hydra) → command injection (`$(...)` filter bypass)
-→ reverse shell → sudo privilege escalation → backdoor account + `sshd` change →
-secret-file exfiltration. The exact indicator of compromise for each stage is
-mapped in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Diagram 3).
-
----
-
-## Components
-
-| Path | Runs on | What it is |
-|------|---------|-----------|
-| `pi/camera_panel.py` | Pi `:8080` | The vulnerable panel, **modified** to log every login/ping as structured JSON (to a JSONL file + syslog). The vulnerability is left intact. |
-| `pi/sentinel_sensor.py` | Pi (root) | Real-time sensor merging `journalctl`/`tcpdump`/`inotifywait` into one JSON stream on stdout. |
-| `detection/ingest.py` | SOC | Holds a persistent SSH connection to the Pi and reads the sensor stream live (no polling). |
-| `detection/rules.py` | SOC | The detection engine: one behavioural rule per technique class, event correlation, and MITRE/kill-chain/severity metadata. |
-| `detection/store.py` | SOC | Alert persistence (JSON-lines **and** SQLite). |
-| `detection/server.py` | SOC | The main asyncio server: ingest → engine → store → websocket → dashboard. |
-| `dashboard/index.html` | SOC (browser) | The live SOC console. |
-| `attack/replay.py` | SOC | Reproducible validation harness that runs the whole attack chain against the target. |
-| `config/sentinel.conf.json` | SOC | All tunable thresholds and the network map. |
-
----
-
-## Prerequisites
-
-* **SOC (Fedora):** Python 3.9+, an SSH key to the Pi at `~/.ssh/pi_key`,
-  Tailscale up. The only third-party dependency is `aiohttp` (installed into a
-  local venv automatically by `scripts/start_soc.sh`).
-* **Pi:** Python 3, Flask, `tcpdump`, `inotify-tools`, and passwordless `sudo`
-  for the sensor (already provisioned on the assignment Pi).
-
-Ports: panel **8080** (Pi), dashboard **8770** (SOC). *(8760 is deliberately
-avoided — it's used by an unrelated dashboard on this laptop.)*
-
----
-
-## Run it (three terminals)
+No Raspberry Pi, no attacker box, no network setup. Just Python 3.9+.
 
 ```bash
-# 1) One-time: deploy telemetry to the Pi and start the panel with logging
-./scripts/deploy_pi.sh
-
-# 2) Start the SOC — ingestion + detection + dashboard (creates the venv on first run)
-./scripts/start_soc.sh
-#    → open http://100.91.16.98:8770/  in a browser
-
-# 3) Trigger the attack — TWO options:
-
-#   (a) REAL attack from the Kali box (genuine source IPs, no relabeling).
-#       Copy the runbook to Kali (100.65.92.63) and run it there:
-#         scp attack/kali_attack.sh kali@100.65.92.63:~ ; ssh kali 'chmod +x kali_attack.sh && ./kali_attack.sh'
-#       Requires demo.attacker_attribution=false (the current setting). Stages
-#       1-3 show Kali's real IP; stages 4-7 run on the Pi and show the Pi's IP.
-
-#   (b) Self-contained replay from the SOC (no Kali needed; for a quick local demo):
-python3 attack/replay.py            # full pace, good for screen recording
-python3 attack/replay.py --fast     # quicker
-python3 attack/replay.py --cleanup  # remove the backdoor account either path creates
+git clone https://github.com/sh4mbhavi/Sentinel-E.git
+cd Sentinel-E
+./demo.sh            # or:  python3 demo.py
 ```
 
-The dashboard shows the kill chain filling in, the ATT&CK matrix highlighting,
-counters ticking, and the alert feed streaming — all live over websockets.
+Then open **http://localhost:8770/** in your browser.
 
-> **Note on source IPs.** The detection rules are **source-agnostic** — they
-> read the true origin of every observation (tcpdump captures the real SYN
-> source; the panel logs the real HTTP `remote_addr`). So a genuine attack from
-> Kali is displayed with real IPs: stages 1–3 → `100.65.92.63`, stages 4–7 →
-> the Pi `100.119.99.36` (those run on the Pi via the injection point).
->
-> `config/sentinel.conf.json → demo.attacker_attribution` controls one optional
-> cosmetic behaviour and nothing else:
-> * **`false` (current setting):** no relabeling — every alert shows its genuine
->   observed source IP. Use this for the real Kali attack (`attack/kali_attack.sh`).
-> * **`true`:** for the self-contained `attack/replay.py`, which runs from the
->   SOC standing in for Kali, the engine *attributes* SOC-origin stand-in traffic
->   to the attacker IP so stages 1–3 still show one coherent adversary origin.
->   This is display attribution, **not** source-IP spoofing.
+The launcher bootstraps a virtualenv, installs the single dependency (`aiohttp`), and starts the platform. About seven seconds after the dashboard loads, a simulated adversary begins a seven-stage intrusion — watch the **cyber kill chain fill in, the ATT&CK matrix light up, the charts climb, and the alert feed stream** in real time as each stage is detected.
+
+> **It's real detection.** The demo emits raw telemetry (the same schema a compromised device produces) and the **unmodified detection engine** decides every alert by crossing its real thresholds and correlation windows. No alert is hard-coded.
 
 ---
 
-## Reproduce the demo from scratch
+## 🧭 Usage paths
+
+### 1. Hardware-free demo (recommended first run)
 
 ```bash
-git clone <this-repo> sentinel-e && cd sentinel-e
-./scripts/deploy_pi.sh          # push telemetry + start panel on the Pi
-./scripts/start_soc.sh &        # start the SOC server
-sleep 5
-python3 attack/replay.py        # fire the chain; watch http://100.91.16.98:8770/
+./demo.sh
+```
+Everything runs locally. Ideal for evaluating the platform, screen-recording the detection flow, or developing new rules. Details: **[LAB_GUIDE.md](LAB_GUIDE.md) → Demo Mode**.
+
+### 2. Full hardware cyber range
+
+Run the SOC on one machine and point it at a real target device streaming live telemetry, then drive the attack from a separate adversary host. This is the hands-on red-vs-blue range.
+
+```bash
+./scripts/deploy_pi.sh     # provision the target device's telemetry + vulnerable panel
+./scripts/start_soc.sh     # start ingestion + detection + dashboard on the SOC
+# then execute the attack chain from the adversary host (see the lab guide)
 ```
 
-Alerts persist to `detection/alerts.jsonl` and `detection/alerts.db`; the
-dashboard replays recent history on reconnect.
+Full walkthrough — environment setup, stage-by-stage attack, what to observe, and the mitigation exercises: **[LAB_GUIDE.md](LAB_GUIDE.md)**.
 
 ---
 
-## Security notes
+## 🎯 MITRE ATT&CK coverage
 
-* **No secrets are committed.** The SSH key lives at `~/.ssh/pi_key` and is
-  referenced by path only; `/root/camera_config.secret` stays on the Pi.
-* The panel's command-injection vulnerability is **intentional** — it is the
-  thing being attacked and detected. See [`docs/MITIGATIONS.md`](docs/MITIGATIONS.md)
-  for how each of the seven weaknesses would be fixed in production.
+Sentinel-E ships behavioural detections for the following technique classes. Each rule is threshold-driven and configurable in `config/*.conf.json`.
 
-## Documentation
+| # | Kill-chain phase | Detection (behavioural) | MITRE ATT&CK | Severity |
+|---|------------------|-------------------------|--------------|----------|
+| 1 | Reconnaissance | one source probing many distinct ports in a short window | **T1046** — Network Service Discovery | `medium` |
+| 2 | Weaponisation / Delivery | repeated failed authentications from one source | **T1110** — Brute Force | `high` |
+| 3 | Exploitation | shell metacharacters / command substitution in web input | **T1059** — Command & Scripting Interpreter | `high` |
+| 4 | Installation | outbound connection to a non-standard C2 port | **T1571** — Non-Standard Port | `critical` |
+| 5 | Privilege Escalation | a service account escalating to uid 0 via sudo | **T1548** — Abuse Elevation Control Mechanism | `critical` |
+| 6 | Command & Control | new UID-0 account or `sshd_config` modification | **T1136** — Create Account | `critical` |
+| 7 | Actions on Objectives | sensitive-file read correlated with an egress channel | **T1041 / T1048** — Exfiltration | `critical` |
 
-* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — three diagrams described in full.
-* [`docs/MITIGATIONS.md`](docs/MITIGATIONS.md) — the blue-team fix for every stage.
-* [`pi/README.md`](pi/README.md) — the Pi-side files and telemetry sources.
+Coverage is extensible by design — a new detection is a rule in `detection/rules.py` plus a threshold in config. Full IoC-to-rule mapping: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) → Attack-to-Detection Mapping**.
+
+---
+
+## 🗂️ Repository layout
+
+```
+Sentinel-E/
+├── demo.sh / demo.py         # one-command hardware-free demo launchers
+├── demo/                     # local telemetry generator (simulated sensor)
+├── detection/                # the SOC core
+│   ├── server.py             #   asyncio app: ingest → engine → store → WebSocket
+│   ├── ingest.py             #   pluggable live telemetry ingestion (demo | hardware)
+│   ├── rules.py              #   behavioural detection engine (7 ATT&CK rules)
+│   └── store.py              #   alert persistence (JSON-Lines + SQLite)
+├── dashboard/                # real-time SOC web console (single-page, WebSocket)
+├── pi/                       # hardware target: vulnerable panel + multi-source sensor
+├── attack/                   # adversary drivers (attack chain, replay harness)
+├── config/                   # detection thresholds & profiles (hardware / demo)
+├── scripts/                  # deployment & run helpers
+└── docs/                     # architecture & mitigations
+```
+
+Every script and component is documented in **[SCRIPTS.md](SCRIPTS.md)**.
+
+---
+
+## 📚 Documentation
+
+| Document | What's inside |
+|----------|---------------|
+| **[LAB_GUIDE.md](LAB_GUIDE.md)** | Hands-on red-vs-blue cyber-range worksheet: setup, the attack stage-by-stage, detection walkthrough, and mitigation exercises. |
+| **[SCRIPTS.md](SCRIPTS.md)** | Technical manifest of every script and component — purpose, how to run, dependencies. |
+| **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | System architecture, three data-flow diagrams, and the full attack-to-detection mapping. |
+| **[docs/MITIGATIONS.md](docs/MITIGATIONS.md)** | Blue-team hardening: the concrete fix that neutralises each technique. |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to add detections, extend telemetry, and contribute. |
+
+---
+
+## 🛡️ Responsible use
+
+Sentinel-E includes offensive tooling and an intentionally vulnerable service **for defensive research and controlled lab use only**. Run the attack drivers exclusively against the bundled target — the hardware-free demo, or hardware you own and are authorised to test. Never point them at systems you do not control.
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
