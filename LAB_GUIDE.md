@@ -191,7 +191,19 @@ At this point the kill chain reads **7 / 7** and the ATT&CK matrix is fully lit 
 
 ## Mitigations exercise — make the attack fail
 
-The blue team's job isn't finished at detection. For each technique, apply the fix from **[docs/MITIGATIONS.md](docs/MITIGATIONS.md)**, then re-run that stage and confirm it no longer succeeds. Highlights:
+The blue team's job isn't finished at detection. Apply the fixes, then re-run the attack and confirm it fails.
+
+**One-command harden / restore.** The full defence-in-depth posture is scripted:
+
+```bash
+./scripts/harden.sh      # apply all mitigations to the target
+# ... re-run the attack: it now fails ...
+./scripts/restore.sh     # revert to the vulnerable range (fully reversible)
+```
+
+After hardening, re-running the chain shows the intrusion **contained at exploitation**: recon and brute-force are still detected as *attempts* but gain nothing, and because the injection is rejected there is no shell — so privilege escalation, persistence, and exfiltration never occur and never fire. The kill chain stalls; the breach never happens.
+
+To apply and verify the controls by hand, use the fixes from **[docs/MITIGATIONS.md](docs/MITIGATIONS.md)**:
 
 | Stage | Apply | Expected result on re-run |
 |-------|-------|---------------------------|

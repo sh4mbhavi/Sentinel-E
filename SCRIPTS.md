@@ -88,6 +88,15 @@ A technical index of every component in the platform: what it does, how to run i
 - **Run:** `./scripts/start_soc.sh`.
 - **Depends on:** Python 3.9+.
 
+### `scripts/harden.sh` · `scripts/restore.sh`
+- **Purpose:** the **blue-team mitigation toggle**. `harden.sh` applies the full defence-in-depth posture to the target — swaps in the hardened panel (input allowlist, no-shell exec, login lockout), removes the backdoor, disables root SSH, makes `/etc/passwd` immutable, and adds egress default-deny to known C2/exfil ports. `restore.sh` reverses every change, returning the range to its exploitable state. This makes the red → blue → red loop a two-command exercise.
+- **Run (from the SOC):** `./scripts/harden.sh` to apply, `./scripts/restore.sh` to revert.
+- **Depends on:** SSH access to the target; `nft` on the target for the egress rule (skipped gracefully if absent).
+- **Result after harden:** re-running the attack fails — recon/brute are still detected as attempts but gain nothing; injection is rejected, so there is no shell and therefore no privilege escalation, persistence, or exfiltration.
+
+### `pi/camera_panel_hardened.py`
+- **Purpose:** the **mitigated panel** — the same product with the two application-layer vulnerabilities fixed (allowlisted, shell-free ping diagnostics; rate-limited login with lockout). Deployed by `harden.sh`; the original vulnerable panel is preserved and restored by `restore.sh`.
+
 ---
 
 ## Configuration — `config/`
