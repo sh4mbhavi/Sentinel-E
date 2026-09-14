@@ -19,3 +19,7 @@ detection/alerts.db
 *.log
 scratchpad/
 *.out
+
+# demo-mode alert store (runtime data)
+detection/demo_alerts.jsonl
+detection/demo_alerts.db
