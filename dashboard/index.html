@@ -100,7 +100,7 @@
 
   /* KPI tiles */
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-       padding:18px 18px;position:relative;overflow:hidden;min-height:118px;
+       padding:20px 22px 20px 26px;position:relative;overflow:hidden;min-height:118px;
        display:flex;flex-direction:column;justify-content:center}
   .kpi .lab{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);font-weight:600}
   .kpi .val{font-family:var(--mono);font-size:42px;font-weight:700;line-height:1;margin-top:10px;color:var(--txt);white-space:nowrap}
@@ -128,7 +128,7 @@
   .empty{padding:30px;text-align:center;color:var(--dim);font-size:14px}
 
   /* kill chain */
-  .chain{display:flex;align-items:flex-start;overflow-x:auto;padding:10px 4px 4px}
+  .chain{display:flex;align-items:flex-start;overflow-x:auto;padding:14px 16px 8px}
   .step{flex:1;min-width:104px;text-align:center;position:relative}
   .step .node{width:50px;height:50px;margin:0 auto 12px;border-radius:12px;border:2px solid var(--border2);
     background:var(--surface2);display:flex;align-items:center;justify-content:center;
@@ -246,7 +246,7 @@
       <div class="kpi crit"><span class="accent"></span><div class="lab">Critical</div><div class="val" id="k-critical">0</div><div class="sub">immediate action</div></div>
       <div class="kpi high"><span class="accent"></span><div class="lab">High</div><div class="val" id="k-high">0</div><div class="sub">investigate</div></div>
       <div class="kpi tech"><span class="accent"></span><div class="lab">Techniques Seen</div><div class="val" id="k-tech">0</div><div class="sub">of 7 monitored</div></div>
-      <div class="kpi chain"><span class="accent"></span><div class="lab">Kill-Chain Progress</div><div class="val" id="k-chain">0/7</div><div class="sub">phases triggered</div></div>
+      <div class="kpi chain"><span class="accent"></span><div class="lab">Kill Chain</div><div class="val" id="k-chain">0/7</div><div class="sub">phases triggered</div></div>
     </div>
 
     <div class="grid cols-2" style="margin-top:var(--gap)">
