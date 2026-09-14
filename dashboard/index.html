@@ -3,394 +3,577 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SENTINEL-E — SOC Detection Platform</title>
-<!-- Gotham is the intended brand face. It is a commercial font, so it is listed
-     first (used if installed on the viewing machine) with a geometric fallback
-     stack. Montserrat is pulled from Google Fonts as a close free stand-in when
-     the browser is online; otherwise the CSS falls back to Century Gothic /
-     system geometric sans. -->
+<title>SENTINEL-E</title>
+<!-- no graphical favicon, just the wordmark in-app -->
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* ---- Sentinel-E palette: black + #d8b0c1, with white / red / green ---- */
-    --bg:#000000; --panel:#0e0a0c; --panel2:#160f13; --inset:#050304;
-    --line:#291d24; --line2:#3a2a33;
-    --txt:#f3e9ee; --dim:#9c8791;
-    --pink:#d8b0c1; --pink-soft:#e7d0da; --pink-dim:#a5808f;
-    --white:#ffffff; --red:#ff4d63; --green:#5fd39a;
-    /* severity ramp stays on-palette: green -> pink -> hot-pink -> red */
-    --low:#5fd39a; --medium:#d8b0c1; --high:#ec7d9f; --critical:#ff4d63;
-    --font:'Gotham','Gotham SSm','Montserrat','Century Gothic',Futura,-apple-system,'Segoe UI',Roboto,sans-serif;
-    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    /* pitch black + pink, pastel red/green */
+    --bg:#000000; --surface:#0a090b; --surface2:#100e12; --surface3:#16131a;
+    --border:#211c26; --border2:#2f2836; --grid:#171319;
+    --txt:#ece8ee; --txt2:#b7aebd; --dim:#7d7286; --faint:#4e4657;
+    --pink:#d8b0c1; --pink-h:#e6c6d4; --pink-d:#a97f92; --pink-glow:rgba(216,176,193,.55);
+    --red:#ff8090; --green:#8fe6b0; --amber:#e6c58f;
+    /* severity ramp on-theme: green -> pink -> rose -> pastel red */
+    --sev-low:#8fe6b0; --sev-med:#d8b0c1; --sev-high:#e58aa6; --sev-crit:#ff8090;
+    --sans:'Inter','Gotham','Montserrat',-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --rail:236px; --topbar:56px; --pad:22px; --gap:16px; --radius:10px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{
-    background:radial-gradient(1100px 560px at 72% -12%,rgba(216,176,193,.07),var(--bg) 62%),var(--bg);
-    color:var(--txt); font-family:var(--font); font-size:14px; overflow-x:hidden;
-    letter-spacing:.2px;
+    background:var(--bg); color:var(--txt);
+    font-family:var(--sans); font-size:13.5px; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
   }
-  /* ---------- header ---------- */
-  header{
-    display:flex; align-items:center; gap:16px;
-    padding:14px 26px; border-bottom:1px solid var(--line);
-    background:linear-gradient(90deg,#0b0709,#140d11);
-    position:sticky; top:0; z-index:20;
-  }
-  .brand{display:flex;align-items:center;gap:13px}
-  .shield{
-    width:40px;height:40px;border-radius:9px;
-    background:linear-gradient(135deg,var(--pink),var(--pink-soft));
-    display:flex;align-items:center;justify-content:center;
-    font-weight:800;color:#1a0f14;font-size:20px;
-    box-shadow:0 0 22px rgba(216,176,193,.5);
-  }
-  .brand h1{font-size:19px;font-weight:800;letter-spacing:1px}
-  .brand h1 span{color:var(--pink)}
-  .brand .sub{font-size:11px;color:var(--dim);letter-spacing:3px;text-transform:uppercase}
-  .status{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:12px}
-  .pill{display:flex;align-items:center;gap:8px;color:var(--dim)}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--dim)}
-  .dot.live{background:var(--green);animation:pulse 1.6s infinite}
-  .dot.warn{background:var(--pink);animation:pulse 1.6s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,154,.5)}70%{box-shadow:0 0 0 8px rgba(95,211,154,0)}100%{box-shadow:0 0 0 0 rgba(95,211,154,0)}}
-  .clock{font-family:var(--mono);color:var(--txt)}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#241f2a;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:var(--mono)}
 
-  /* ---------- layout ---------- */
-  .wrap{padding:20px 26px;display:grid;gap:18px;grid-template-columns:1.15fr .85fr;}
-  .col{display:flex;flex-direction:column;gap:18px;min-width:0}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .panel h2{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--pink-dim);
-            padding:13px 18px;border-bottom:1px solid var(--line);display:flex;
-            align-items:center;gap:10px;background:var(--panel2)}
-  .panel h2 .tag{margin-left:auto;font-size:10px;color:var(--dim);letter-spacing:1px}
+  /* ===================== TOP BAR ===================== */
+  .topbar{
+    position:fixed; top:0; left:0; right:0; height:var(--topbar); z-index:50;
+    display:flex; align-items:center; gap:20px; padding:0 22px;
+    background:linear-gradient(180deg,#0c0a0e,#070609);
+    border-bottom:1px solid var(--border);
+  }
+  .wordmark{font-family:var(--sans);font-weight:800;font-size:16px;letter-spacing:3px;color:var(--txt)}
+  .wordmark b{color:var(--pink);font-weight:800}
+  .wordmark .cur{color:var(--pink);animation:blink 1.3s steps(1) infinite;margin-left:1px}
+  @keyframes blink{50%{opacity:0}}
+  .kicker{font-size:10.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);
+          border-left:1px solid var(--border2);padding-left:18px}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:20px}
+  .statepill{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--txt2);font-family:var(--mono)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+  .dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  .dot.pulse{animation:pulse 1.7s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--pink-glow)}70%{box-shadow:0 0 0 7px rgba(216,176,193,0)}100%{box-shadow:0 0 0 0 rgba(216,176,193,0)}}
+  .clock{font-family:var(--mono);font-size:12px;color:var(--txt);letter-spacing:1px}
 
-  /* ---------- counters ---------- */
-  .counters{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-        padding:16px 14px;position:relative;overflow:hidden}
-  .stat .n{font-size:30px;font-weight:800;font-family:var(--mono);line-height:1}
-  .stat .l{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-top:8px}
-  .stat.total .n{color:var(--white)} .stat.low .n{color:var(--low)}
-  .stat.medium .n{color:var(--medium)} .stat.high .n{color:var(--high)}
-  .stat.critical .n{color:var(--critical)}
-  .stat::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:100%;opacity:.9}
-  .stat.total::after{background:var(--pink)} .stat.low::after{background:var(--low)}
-  .stat.medium::after{background:var(--medium)} .stat.high::after{background:var(--high)}
-  .stat.critical::after{background:var(--critical)}
+  /* ===================== SIDEBAR ===================== */
+  .rail{
+    position:fixed; top:var(--topbar); left:0; bottom:0; width:var(--rail); z-index:40;
+    background:linear-gradient(180deg,#08070a,#050406); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:14px 0;
+  }
+  .navsec{font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);
+          padding:12px 22px 7px}
+  .nav{display:flex;align-items:center;gap:12px;padding:9px 22px;color:var(--dim);
+       font-size:13px;font-weight:500;cursor:pointer;border-left:2px solid transparent;transition:.15s}
+  .nav svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7}
+  .nav:hover{color:var(--txt2);background:#0d0b10}
+  .nav.active{color:var(--pink);background:linear-gradient(90deg,rgba(216,176,193,.09),transparent);
+              border-left-color:var(--pink)}
+  .rail .foot{margin-top:auto;padding:14px 22px;border-top:1px solid var(--border);
+              font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.9}
+  .rail .foot .k{color:var(--faint)}
+  .rail .foot b{color:var(--pink-d);font-weight:500}
+
+  /* ===================== MAIN ===================== */
+  main{margin-left:var(--rail);margin-top:var(--topbar);padding:var(--pad);min-height:calc(100vh - var(--topbar))}
+  .section{margin-bottom:30px;scroll-margin-top:72px}
+  .sechead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .sechead h2{font-size:14px;font-weight:700;letter-spacing:.4px;color:var(--txt)}
+  .sechead .hint{font-size:11px;color:var(--dim)}
+  .sechead .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent)}
+
+  .grid{display:grid;gap:var(--gap)}
+  .kpis{grid-template-columns:repeat(5,1fr)}
+  .cols-2{grid-template-columns:1.7fr 1fr}
+  .cols-2b{grid-template-columns:1fr 1fr}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.cols-2,.cols-2b{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);position:relative}
+  .card > .ch{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}
+  .card > .ch h3{font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--txt2)}
+  .card > .ch .tag{margin-left:auto;font-size:10px;color:var(--dim);font-family:var(--mono)}
+  .card > .cb{padding:16px}
+
+  /* KPI tiles */
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+       padding:15px 16px;position:relative;overflow:hidden}
+  .kpi .lab{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim)}
+  .kpi .val{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1.1;margin-top:8px;color:var(--txt)}
+  .kpi .sub{font-size:10.5px;color:var(--dim);margin-top:4px}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pink)}
+  .kpi.crit .val{color:var(--sev-crit)} .kpi.crit .accent{background:var(--sev-crit)}
+  .kpi.high .val{color:var(--sev-high)} .kpi.high .accent{background:var(--sev-high)}
+  .kpi.tech .val{color:var(--pink)} .kpi.chain .val{color:var(--pink)}
   .flash{animation:flash .8s}
-  @keyframes flash{0%{background:#241820}100%{background:var(--panel)}}
+  @keyframes flash{0%{background:#1b141b}100%{background:var(--surface)}}
 
-  /* ---------- kill chain ---------- */
-  .chain{display:flex;gap:0;padding:18px;align-items:stretch;overflow-x:auto}
-  .stage{flex:1;min-width:104px;position:relative;text-align:center;padding:0 6px}
-  .stage .node{
-    width:46px;height:46px;border-radius:12px;margin:0 auto 10px;
-    border:2px solid var(--line2);background:var(--panel2);
-    display:flex;align-items:center;justify-content:center;font-weight:800;
-    color:var(--dim);font-family:var(--mono);font-size:16px;transition:.35s;position:relative;z-index:2}
-  .stage .nm{font-size:11px;color:var(--dim);line-height:1.3;transition:.35s}
-  .stage .tech{font-size:9.5px;color:var(--pink-dim);font-family:var(--mono);margin-top:3px}
-  .stage:not(:last-child)::after{content:'';position:absolute;top:23px;left:60%;width:80%;
-    height:2px;background:var(--line2);z-index:1;transition:.35s}
-  .stage.fired .node{border-color:var(--pink);color:#1a0f14;
-    background:linear-gradient(135deg,var(--pink),var(--pink-soft));
-    box-shadow:0 0 20px rgba(216,176,193,.75)}
-  .stage.fired .nm{color:var(--txt)}
-  .stage.fired::after{background:linear-gradient(90deg,var(--pink),var(--line2))}
-  .stage.just .node{animation:pop .6s}
-  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+  /* charts */
+  .chart-wrap{width:100%}
+  svg{display:block;width:100%;overflow:visible}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:11px;color:var(--txt2)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
+  .donut-center{font-family:var(--mono)}
 
-  /* ---------- mitre ---------- */
-  .mitre{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:16px}
-  .tech-card{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:var(--panel2);
-             transition:.3s;opacity:.5}
-  .tech-card .id{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--dim)}
-  .tech-card .nm{font-size:11px;color:var(--dim);margin-top:3px}
-  .tech-card.fired{opacity:1;border-color:var(--pink);
-    background:linear-gradient(135deg,rgba(216,176,193,.16),var(--panel2))}
-  .tech-card.fired .id{color:var(--pink)} .tech-card.fired .nm{color:var(--txt)}
+  /* horizontal bars */
+  .bars{display:flex;flex-direction:column;gap:11px}
+  .bar-row{display:grid;grid-template-columns:120px 1fr 42px;align-items:center;gap:12px;font-size:12px}
+  .bar-row .bl{color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-track{height:9px;background:var(--surface3);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--pink-d),var(--pink));transition:width .5s}
+  .bar-row .bv{font-family:var(--mono);text-align:right;color:var(--txt)}
+  .empty{padding:26px;text-align:center;color:var(--dim);font-size:12px}
 
-  /* ---------- topology ---------- */
-  .topo{display:flex;align-items:center;justify-content:space-around;padding:22px 14px;gap:8px}
-  .node2{text-align:center;flex:1}
-  .node2 .box{border:1px solid var(--line2);border-radius:11px;padding:14px 8px;background:var(--panel2)}
-  .node2 .ico{font-size:24px} .node2 .t{font-size:12px;font-weight:700;margin-top:6px}
-  .node2 .ip{font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:3px}
-  .node2.attacker .box{border-color:var(--red);box-shadow:0 0 14px rgba(255,77,99,.25)}
-  .node2.soc .box{border-color:var(--pink);box-shadow:0 0 14px rgba(216,176,193,.25)}
-  .arrow{flex:.6;text-align:center;color:var(--dim);font-size:11px}
-  .arrow .ln{height:2px;background:linear-gradient(90deg,var(--line2),var(--pink),var(--line2));margin:6px 0}
-  .arrow.attack .ln{background:linear-gradient(90deg,var(--line2),var(--red),var(--line2))}
-  .arrow.beam .ln{animation:beam 1.2s infinite}
-  @keyframes beam{0%,100%{opacity:.35}50%{opacity:1}}
+  /* kill chain */
+  .chain{display:flex;align-items:flex-start;overflow-x:auto;padding:6px 2px}
+  .step{flex:1;min-width:96px;text-align:center;position:relative}
+  .step .node{width:38px;height:38px;margin:0 auto 9px;border-radius:9px;border:1.5px solid var(--border2);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-weight:700;font-size:14px;color:var(--dim);transition:.35s;position:relative;z-index:2}
+  .step .nm{font-size:10.5px;color:var(--dim);line-height:1.25}
+  .step .tid{font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:3px}
+  .step:not(:last-child)::after{content:'';position:absolute;top:19px;left:62%;width:76%;height:1.5px;background:var(--border2);z-index:1;transition:.35s}
+  .step.hit .node{border-color:var(--pink);color:#150e13;background:linear-gradient(135deg,var(--pink),var(--pink-h));box-shadow:0 0 16px var(--pink-glow)}
+  .step.hit .nm{color:var(--txt)}
+  .step.hit::after{background:linear-gradient(90deg,var(--pink),var(--border2))}
+  .step.just .node{animation:pop .6s}
+  @keyframes pop{40%{transform:scale(1.3)}}
 
-  /* ---------- alert feed ---------- */
-  .feed{max-height:520px;overflow-y:auto}
-  .alert{display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);
-         cursor:pointer;transition:.15s;position:relative}
-  .alert:hover{background:var(--panel2)}
-  .alert .bar{width:4px;border-radius:3px;flex:0 0 4px}
-  .alert.low .bar{background:var(--low)} .alert.medium .bar{background:var(--medium)}
-  .alert.high .bar{background:var(--high)} .alert.critical .bar{background:var(--critical)}
-  .alert .body{flex:1;min-width:0}
-  .alert .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .sev{font-size:9.5px;font-weight:800;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase}
-  .sev.low{background:rgba(95,211,154,.18);color:var(--low)}
-  .sev.medium{background:rgba(216,176,193,.2);color:var(--medium)}
-  .sev.high{background:rgba(236,125,159,.2);color:var(--high)}
-  .sev.critical{background:rgba(255,77,99,.22);color:var(--critical)}
-  .alert .sname{font-weight:700;font-size:13.5px;color:var(--txt)}
-  .alert .mid{font-family:var(--mono);font-size:10.5px;color:var(--pink);
-              border:1px solid var(--line2);padding:1px 6px;border-radius:4px}
-  .alert .desc{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.45}
-  .alert .meta{font-size:10.5px;color:var(--pink-dim);font-family:var(--mono);margin-top:6px;
-               display:flex;gap:14px;flex-wrap:wrap}
-  .newin{animation:slidein .5s}
-  @keyframes slidein{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:none}}
-  .empty{padding:40px;text-align:center;color:var(--dim);font-size:13px}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{text-align:left;font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);
+           font-weight:600;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--grid);color:var(--txt2);vertical-align:top}
+  tbody tr{transition:.12s;cursor:pointer}
+  tbody tr:hover{background:var(--surface2)}
+  .tblwrap{max-height:460px;overflow:auto}
+  .newrow{animation:rowin .5s}
+  @keyframes rowin{0%{background:#22161d}100%{background:transparent}}
+  .sev-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.6px;
+             text-transform:uppercase;padding:2px 8px;border-radius:4px;font-family:var(--sans)}
+  .sev-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .sev-critical{color:var(--sev-crit);background:rgba(255,128,144,.13)}
+  .sev-high{color:var(--sev-high);background:rgba(229,138,166,.13)}
+  .sev-medium{color:var(--sev-med);background:rgba(216,176,193,.13)}
+  .sev-low{color:var(--sev-low);background:rgba(143,230,176,.13)}
+  td .tid{font-family:var(--mono);color:var(--pink);font-size:11px}
+  td .tname{color:var(--dim);font-size:10.5px}
+  td.time,td.src{font-family:var(--mono);font-size:11px;color:var(--txt2);white-space:nowrap}
+  .pill-status{font-size:10px;font-family:var(--mono);color:var(--green);border:1px solid #1e3a2b;
+               background:rgba(143,230,176,.07);padding:1px 7px;border-radius:4px}
 
-  /* ---------- timeline ---------- */
-  .timeline{padding:14px 18px;max-height:210px;overflow-y:auto}
-  .tl{display:flex;gap:11px;align-items:flex-start;padding:6px 0}
-  .tl .tt{font-family:var(--mono);font-size:10.5px;color:var(--dim);flex:0 0 66px}
-  .tl .td{width:9px;height:9px;border-radius:50%;margin-top:3px;flex:0 0 9px}
-  .tl .tx{font-size:12px;color:var(--txt)}
-  .tl.low .td{background:var(--low)} .tl.medium .td{background:var(--medium)}
-  .tl.high .td{background:var(--high)} .tl.critical .td{background:var(--critical)}
+  /* telemetry sources */
+  .srcs{display:flex;flex-direction:column;gap:2px}
+  .srcrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--grid);font-size:12px}
+  .srcrow:last-child{border-bottom:none}
+  .srcrow .nm{color:var(--txt2);flex:1}
+  .srcrow .meta{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+  .srcrow .st{font-family:var(--mono);font-size:10px;letter-spacing:.5px}
 
-  /* ---------- drawer ---------- */
-  .drawer{position:fixed;top:0;right:-460px;width:440px;height:100%;
-    background:var(--panel);border-left:1px solid var(--line2);z-index:40;
-    transition:right .3s;overflow-y:auto;box-shadow:-20px 0 50px rgba(0,0,0,.7)}
+  /* ATT&CK matrix */
+  .matrix{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .mcol .mhead{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);
+               padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:8px;min-height:30px}
+  .mcell{border:1px solid var(--border);border-radius:7px;padding:9px 10px;margin-bottom:8px;background:var(--surface2);opacity:.5;transition:.3s}
+  .mcell .id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim)}
+  .mcell .nm{font-size:10px;color:var(--dim);margin-top:2px}
+  .mcell.on{opacity:1;border-color:var(--pink);background:linear-gradient(135deg,rgba(216,176,193,.13),var(--surface2))}
+  .mcell.on .id{color:var(--pink)} .mcell.on .nm{color:var(--txt2)}
+
+  /* drawer */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:59;opacity:0;pointer-events:none;transition:.25s}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:-480px;width:460px;max-width:92vw;height:100%;z-index:60;
+    background:var(--surface);border-left:1px solid var(--border2);transition:right .28s;overflow-y:auto;
+    box-shadow:-30px 0 60px rgba(0,0,0,.6)}
   .drawer.open{right:0}
-  .drawer .dh{padding:18px;border-bottom:1px solid var(--line);display:flex;
-              align-items:center;gap:10px;background:var(--panel2)}
-  .drawer .dh .x{margin-left:auto;cursor:pointer;color:var(--dim);font-size:20px}
-  .drawer .dc{padding:18px}
-  .kv{display:flex;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px}
-  .kv .k{flex:0 0 130px;color:var(--pink-dim);text-transform:uppercase;font-size:10.5px;letter-spacing:.8px;padding-top:2px}
+  .drawer .dh{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .drawer .dh .x{margin-left:auto;cursor:pointer;color:var(--dim);font-size:18px;line-height:1}
+  .drawer .db{padding:18px 20px}
+  .kv{display:flex;padding:10px 0;border-bottom:1px solid var(--grid);font-size:12.5px}
+  .kv .k{flex:0 0 140px;color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.9px;padding-top:2px}
   .kv .v{flex:1;color:var(--txt);word-break:break-word}
-  .kv .v.mono{font-family:var(--mono);font-size:12px}
-  pre.detail{background:var(--inset);border:1px solid var(--line2);border-radius:8px;padding:12px;
-             font-family:var(--mono);font-size:11.5px;color:var(--pink-soft);white-space:pre-wrap;margin-top:8px}
-  .ticker{font-family:var(--mono);font-size:11px;color:var(--pink-dim);padding:9px 18px;
-          border-top:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  @media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+  .kv .v.mono{font-family:var(--mono);font-size:11.5px}
+  pre.raw{background:#050405;border:1px solid var(--border2);border-radius:8px;padding:12px;
+          font-family:var(--mono);font-size:11px;color:var(--pink-h);white-space:pre-wrap;margin-top:8px}
+
+  /* live ticker */
+  .ticker{position:fixed;bottom:0;left:var(--rail);right:0;height:26px;z-index:30;
+    background:#060507;border-top:1px solid var(--border);display:flex;align-items:center;
+    padding:0 16px;font-family:var(--mono);font-size:10.5px;color:var(--dim);gap:10px;overflow:hidden;white-space:nowrap}
+  .ticker .lbl{color:var(--pink-d);flex:none}
+  main{padding-bottom:44px}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="shield">S</div>
-    <div>
-      <h1>SENTINEL-<span>E</span></h1>
-      <div class="sub">SOC Detection Platform</div>
-    </div>
-  </div>
-  <div class="status">
-    <div class="pill"><span class="dot" id="wsdot"></span><span id="wstext">connecting…</span></div>
-    <div class="pill"><span class="dot" id="sensordot"></span><span id="sensortext">sensor: —</span></div>
-    <div class="pill clock" id="clock">--:--:--</div>
-  </div>
-</header>
 
-<div class="wrap">
-  <!-- LEFT COLUMN -->
-  <div class="col">
-    <div class="counters" id="counters">
-      <div class="stat total"><div class="n" id="c-total">0</div><div class="l">Total Alerts</div></div>
-      <div class="stat critical"><div class="n" id="c-critical">0</div><div class="l">Critical</div></div>
-      <div class="stat high"><div class="n" id="c-high">0</div><div class="l">High</div></div>
-      <div class="stat medium"><div class="n" id="c-medium">0</div><div class="l">Medium</div></div>
-      <div class="stat low"><div class="n" id="c-low">0</div><div class="l">Low</div></div>
-    </div>
-
-    <div class="panel">
-      <h2>Cyber Kill Chain <span class="tag" id="chain-tag">0 / 7 stages triggered</span></h2>
-      <div class="chain" id="chain"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Live Alert Feed <span class="tag">newest first</span></h2>
-      <div class="feed" id="feed"><div class="empty" id="feed-empty">Awaiting telemetry… the feed updates the instant a detection fires.</div></div>
-      <div class="ticker" id="ticker">telemetry stream idle</div>
-    </div>
-  </div>
-
-  <!-- RIGHT COLUMN -->
-  <div class="col">
-    <div class="panel">
-      <h2>Network Topology</h2>
-      <div class="topo">
-        <div class="node2 attacker"><div class="box"><div class="ico">💀</div><div class="t">Attacker</div><div class="ip" id="ip-att">Kali</div></div></div>
-        <div class="arrow attack" id="arr1"><div>attack</div><div class="ln"></div><div>▶</div></div>
-        <div class="node2 target"><div class="box"><div class="ico">📷</div><div class="t">IoT Target</div><div class="ip" id="ip-pi">Pi</div></div></div>
-        <div class="arrow beam" id="arr2"><div>telemetry</div><div class="ln"></div><div>▶</div></div>
-        <div class="node2 soc"><div class="box"><div class="ico">🛡️</div><div class="t">Sentinel-E SOC</div><div class="ip" id="ip-soc">Fedora</div></div></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>MITRE ATT&CK Coverage</h2>
-      <div class="mitre" id="mitre"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Attack Timeline</h2>
-      <div class="timeline" id="timeline"><div class="empty">No events yet.</div></div>
-    </div>
+<div class="topbar">
+  <div class="wordmark">SENTINEL<b>-E</b><span class="cur">_</span></div>
+  <div class="kicker">Security Operations Center</div>
+  <div class="right">
+    <div class="statepill"><span class="dot" id="wsdot"></span><span id="wstext">link…</span></div>
+    <div class="statepill"><span class="dot" id="sedot"></span><span id="setext">sensor…</span></div>
+    <div class="clock" id="clock">--:--:--</div>
   </div>
 </div>
 
-<!-- DETAIL DRAWER -->
+<nav class="rail">
+  <div class="navsec">Monitoring</div>
+  <div class="nav active" data-go="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</div>
+  <div class="nav" data-go="alerts"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>Alerts</div>
+  <div class="nav" data-go="killchain"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/><path d="M7.4 12h9.2"/></svg>Kill Chain</div>
+  <div class="navsec">Intelligence</div>
+  <div class="nav" data-go="attack"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11M15 9v11"/></svg>ATT&amp;CK Matrix</div>
+  <div class="nav" data-go="detections"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>Detections</div>
+  <div class="foot">
+    <div><span class="k">node</span> <b id="f-node">soc</b></div>
+    <div><span class="k">engine</span> <b>sentinel-e</b></div>
+    <div><span class="k">status</span> <b id="f-status">init</b></div>
+  </div>
+</nav>
+
+<main>
+  <!-- OVERVIEW -->
+  <section class="section" id="overview">
+    <div class="sechead"><h2>Overview</h2><span class="hint">real-time detection posture</span><span class="rule"></span></div>
+    <div class="grid kpis" id="kpis">
+      <div class="kpi"><span class="accent"></span><div class="lab">Total Alerts</div><div class="val" id="k-total">0</div><div class="sub">across all detections</div></div>
+      <div class="kpi crit"><span class="accent"></span><div class="lab">Critical</div><div class="val" id="k-critical">0</div><div class="sub">immediate action</div></div>
+      <div class="kpi high"><span class="accent"></span><div class="lab">High</div><div class="val" id="k-high">0</div><div class="sub">investigate</div></div>
+      <div class="kpi tech"><span class="accent"></span><div class="lab">Techniques Seen</div><div class="val" id="k-tech">0</div><div class="sub">of 7 monitored</div></div>
+      <div class="kpi chain"><span class="accent"></span><div class="lab">Kill-Chain Progress</div><div class="val" id="k-chain">0/7</div><div class="sub">phases triggered</div></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:var(--gap)">
+      <div class="card">
+        <div class="ch"><h3>Alert Volume</h3><span class="tag" id="vol-tag">events over time</span></div>
+        <div class="cb"><div class="chart-wrap" id="volchart"></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>Severity Distribution</h3></div>
+        <div class="cb"><div id="donut"></div><div class="legend" id="donut-legend"></div></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2b" style="margin-top:var(--gap)">
+      <div class="card">
+        <div class="ch"><h3>Alerts by Tactic</h3><span class="tag">kill-chain phase</span></div>
+        <div class="cb"><div class="bars" id="tacticbars"><div class="empty">No detections yet.</div></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>Top Source IPs</h3></div>
+        <div class="cb"><div class="bars" id="srcbars"><div class="empty">No detections yet.</div></div></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:var(--gap)">
+      <div class="card">
+        <div class="ch"><h3>Cyber Kill Chain</h3><span class="tag" id="chain-tag">0 / 7 triggered</span></div>
+        <div class="cb"><div class="chain" id="chain"></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>Telemetry Sources</h3><span class="tag">live ingest</span></div>
+        <div class="cb"><div class="srcs" id="srcs"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERTS -->
+  <section class="section" id="alerts">
+    <div class="sechead"><h2>Alerts</h2><span class="hint">newest first · click a row for detail</span><span class="rule"></span></div>
+    <div class="card">
+      <div class="ch"><h3>Detection Alerts</h3><span class="tag" id="alerts-tag">0 events</span></div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th style="width:92px">Time</th><th style="width:110px">Severity</th><th style="width:190px">Technique</th><th style="width:150px">Tactic</th><th style="width:130px">Source</th><th>Detail</th></tr></thead>
+          <tbody id="alerts-body"></tbody>
+        </table>
+      </div>
+      <div id="alerts-empty" class="empty">Awaiting telemetry — alerts stream in live as detections fire.</div>
+    </div>
+  </section>
+
+  <!-- KILL CHAIN (detailed) is shown in overview; anchor targets overview chain -->
+
+  <!-- ATT&CK -->
+  <section class="section" id="attack">
+    <div class="sechead"><h2>MITRE ATT&amp;CK Matrix</h2><span class="hint">techniques observed are highlighted</span><span class="rule"></span></div>
+    <div class="card"><div class="cb"><div class="matrix" id="matrix"></div></div></div>
+  </section>
+
+  <!-- DETECTIONS -->
+  <section class="section" id="detections">
+    <div class="sechead"><h2>Detection Rules</h2><span class="hint">behavioural rules mapped to ATT&amp;CK · configurable thresholds</span><span class="rule"></span></div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Rule</th><th style="width:150px">MITRE</th><th style="width:170px">Tactic</th><th style="width:110px">Severity</th><th style="width:90px">Status</th><th style="width:70px">Hits</th></tr></thead>
+        <tbody id="rules-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="ticker"><span class="lbl">TELEMETRY</span><span id="ticker">stream idle</span></div>
+
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
-  <div class="dh"><span class="sev" id="d-sev">—</span><b id="d-title">Alert</b><span class="x" onclick="closeDrawer()">✕</span></div>
-  <div class="dc" id="d-body"></div>
+  <div class="dh"><span class="sev-badge" id="d-sev">—</span><b id="d-title">Alert</b><span class="x" onclick="closeDrawer()">&times;</span></div>
+  <div class="db" id="d-body"></div>
 </div>
 
 <script>
-const $ = s => document.querySelector(s);
-let META = null;
-const SEV_ORDER = ['low','medium','high','critical'];
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const SEV=['critical','high','medium','low'];
+const SEVCOL={critical:'#ff8090',high:'#e58aa6',medium:'#d8b0c1',low:'#8fe6b0'};
+let META=null, ALERTS=[], COUNTS={total:0,critical:0,high:0,medium:0,low:0}, FIRED=new Set();
+let TELEM={auth:0,net:0,file:0,panel:0,sensor:0}, SENSOR='';
+
+const SOURCES=[
+  {key:'auth',  nm:'Authentication (journald: sudo / sshd)'},
+  {key:'net',   nm:'Network sensor (tcpdump)'},
+  {key:'file',  nm:'File integrity (inotify)'},
+  {key:'panel', nm:'Application events (web panel)'},
+];
 
 // ---- clock ----
-setInterval(()=>{ $('#clock').textContent = new Date().toLocaleTimeString(); },1000);
+setInterval(()=>{const d=new Date();$('#clock').textContent=d.toLocaleTimeString('en-GB');},1000);
 
-// ---- build scaffolding from /api/meta ----
+// ---- boot ----
 async function boot(){
-  META = await (await fetch('/api/meta')).json();
-  const n = META.network;
-  $('#ip-att').textContent = n.attacker_ip;
-  $('#ip-pi').textContent  = n.pi_ip;
-  $('#ip-soc').textContent = n.soc_ip;
-
-  const stages = Object.entries(META.stages).sort((a,b)=>a[1].num-b[1].num);
-  // kill chain
-  $('#chain').innerHTML = stages.map(([k,s])=>`
-    <div class="stage" data-stage="${k}">
-      <div class="node">${s.num}</div>
-      <div class="nm">${s.name}</div>
-      <div class="tech">${s.technique_id}</div>
-    </div>`).join('');
-  // mitre matrix (unique technique cards)
-  $('#mitre').innerHTML = stages.map(([k,s])=>`
-    <div class="tech-card" data-stage="${k}">
-      <div class="id">${s.technique_id}</div>
-      <div class="nm">${s.technique_name}</div>
-    </div>`).join('');
-
-  const b = await (await fetch('/api/bootstrap')).json();
-  applyCounts(b.counts);
-  (b.fired_stages||[]).forEach(markStage);
-  (b.history||[]).forEach(a=>addAlert(a,false));
-  setSensor(b.sensor_status);
+  META=await (await fetch('/api/meta')).json();
+  $('#f-node').textContent=(META.network&&META.network.soc_ip)||'soc';
+  buildChain(); buildMatrix(); buildRules(); renderSources();
+  const b=await (await fetch('/api/bootstrap')).json();
+  COUNTS=b.counts||COUNTS; FIRED=new Set(b.fired_stages||[]);
+  ALERTS=(b.history||[]).slice();
+  ALERTS.forEach(a=>prependRow(a,false));
+  setSensor(b.sensor_status||'');
+  renderAll();
   connect();
 }
 
-function applyCounts(c){
-  ['total','critical','high','medium','low'].forEach(k=>{
-    const el = $('#c-'+k); if(el) el.textContent = c[k]||0;
+// ---- kill chain scaffold ----
+function stagesSorted(){return Object.entries(META.stages).sort((a,b)=>a[1].num-b[1].num);}
+function buildChain(){
+  $('#chain').innerHTML=stagesSorted().map(([k,s])=>`
+    <div class="step" data-stage="${k}">
+      <div class="node">${s.num}</div><div class="nm">${s.name}</div><div class="tid">${s.technique_id}</div>
+    </div>`).join('');
+}
+// ---- ATT&CK matrix: columns = kill-chain phases in order ----
+function buildMatrix(){
+  const phases=[];
+  stagesSorted().forEach(([k,s])=>{ if(!phases.find(p=>p.phase===s.phase)) phases.push({phase:s.phase,items:[]}); });
+  stagesSorted().forEach(([k,s])=>phases.find(p=>p.phase===s.phase).items.push([k,s]));
+  $('#matrix').innerHTML=phases.map(p=>`
+    <div class="mcol">
+      <div class="mhead">${p.phase}</div>
+      ${p.items.map(([k,s])=>`<div class="mcell" data-stage="${k}"><div class="id">${s.technique_id}</div><div class="nm">${s.technique_name}</div></div>`).join('')}
+    </div>`).join('');
+}
+function buildRules(){
+  $('#rules-body').innerHTML=stagesSorted().map(([k,s])=>`
+    <tr data-stage="${k}">
+      <td style="color:var(--txt)">${s.name}</td>
+      <td><span class="tid">${s.technique_id}</span><div class="tname">${s.technique_name}</div></td>
+      <td style="color:var(--txt2)">${s.phase}</td>
+      <td><span class="sev-badge sev-${s.severity}">${s.severity}</span></td>
+      <td><span class="pill-status">ENABLED</span></td>
+      <td class="mono" id="hits-${k}" style="color:var(--txt)">0</td>
+    </tr>`).join('');
+}
+function renderSources(){
+  $('#srcs').innerHTML=SOURCES.map(s=>`
+    <div class="srcrow" data-src="${s.key}">
+      <span class="dot" id="srcdot-${s.key}"></span>
+      <span class="nm">${s.nm}</span>
+      <span class="meta"><span id="srccount-${s.key}">0</span> events</span>
+      <span class="st" id="srcst-${s.key}" style="color:var(--dim)">idle</span>
+    </div>`).join('');
+}
+
+// ================= render aggregates =================
+function renderAll(){ renderKPIs(); renderVolume(); renderDonut(); renderTactics(); renderSources2(); renderSrcBars(); syncChainMatrix(); updateHits(); }
+
+function renderKPIs(){
+  $('#k-total').textContent=COUNTS.total||0;
+  $('#k-critical').textContent=COUNTS.critical||0;
+  $('#k-high').textContent=COUNTS.high||0;
+  $('#k-tech').textContent=new Set(ALERTS.map(a=>a.technique_id)).size;
+  $('#k-chain').textContent=`${FIRED.size}/7`;
+  $('#chain-tag').textContent=`${FIRED.size} / 7 triggered`;
+  $('#alerts-tag').textContent=`${COUNTS.total||0} events`;
+}
+
+// alert volume area chart (bucketed over the observed span)
+function renderVolume(){
+  const el=$('#volchart'), W=680,H=150,pad={l:26,r:8,t:10,b:20};
+  const times=ALERTS.map(a=>new Date(a.ts).getTime()).filter(t=>!isNaN(t)).sort((a,b)=>a-b);
+  if(times.length<1){ el.innerHTML=`<div class="empty">No events yet.</div>`; return; }
+  const t0=times[0], t1=times[times.length-1], N=24;
+  const span=Math.max(t1-t0,N*1000), bw=span/N;
+  const buckets=new Array(N).fill(0);
+  times.forEach(t=>{ let i=Math.min(N-1,Math.floor((t-t0)/bw)); buckets[i]++; });
+  const max=Math.max(1,...buckets);
+  const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const x=i=>pad.l+(i/(N-1))*iw, y=v=>pad.t+ih-(v/max)*ih;
+  let line=buckets.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area=`${line} L${x(N-1).toFixed(1)},${(pad.t+ih).toFixed(1)} L${x(0).toFixed(1)},${(pad.t+ih).toFixed(1)} Z`;
+  let gridlines='';
+  for(let g=0;g<=2;g++){const gv=Math.round(max*g/2);const gy=y(gv);gridlines+=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="var(--grid)"/><text x="2" y="${gy+3}" fill="var(--faint)" font-size="9" font-family="var(--mono)">${gv}</text>`;}
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:150px">
+    <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--pink)" stop-opacity=".38"/><stop offset="1" stop-color="var(--pink)" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${gridlines}
+    <path d="${area}" fill="url(#vg)"/>
+    <path d="${line}" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linejoin="round"/>
+  </svg>`;
+  $('#vol-tag').textContent=`${ALERTS.length} events`;
+}
+
+// severity donut
+function renderDonut(){
+  const segs=SEV.map(s=>({label:s,value:COUNTS[s]||0,color:SEVCOL[s]})).filter(x=>x.value>0);
+  const total=COUNTS.total||0, R=52, C=2*Math.PI*R, cx=70, cy=70;
+  let off=0, arcs='';
+  if(total>0){ segs.forEach(sg=>{ const frac=sg.value/total, len=frac*C;
+    arcs+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${sg.color}" stroke-width="16" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len; }); }
+  else arcs=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface3)" stroke-width="16"/>`;
+  $('#donut').innerHTML=`<svg viewBox="0 0 140 140" style="height:170px">
+    ${arcs}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--txt)" font-size="26" font-weight="700" font-family="var(--mono)">${total}</text>
+    <text x="${cx}" y="${cy+15}" text-anchor="middle" fill="var(--dim)" font-size="9" letter-spacing="1.5">ALERTS</text>
+  </svg>`;
+  $('#donut-legend').innerHTML=SEV.map(s=>`<span><i style="background:${SEVCOL[s]}"></i>${s} <b class="mono" style="color:var(--txt)">${COUNTS[s]||0}</b></span>`).join('');
+}
+
+function barBlock(elId,rows){
+  const el=$(elId);
+  if(!rows.length){ el.innerHTML=`<div class="empty">No detections yet.</div>`; return; }
+  const max=Math.max(...rows.map(r=>r.v));
+  el.innerHTML=rows.map(r=>`<div class="bar-row"><span class="bl" title="${r.k}">${r.k}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,(r.v/max)*100)}%"></div></div>
+    <span class="bv">${r.v}</span></div>`).join('');
+}
+function renderTactics(){
+  const m={}; ALERTS.forEach(a=>{m[a.phase]=(m[a.phase]||0)+1;});
+  barBlock('#tacticbars',Object.entries(m).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v));
+}
+function renderSrcBars(){
+  const m={}; ALERTS.forEach(a=>{const s=a.src_ip||'n/a';m[s]=(m[s]||0)+1;});
+  barBlock('#srcbars',Object.entries(m).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v).slice(0,6));
+}
+function updateHits(){
+  const m={}; ALERTS.forEach(a=>{m[a.stage]=(m[a.stage]||0)+1;});
+  Object.keys(META.stages).forEach(k=>{const el=$('#hits-'+k);if(el)el.textContent=m[k]||0;});
+}
+function syncChainMatrix(){
+  FIRED.forEach(k=>{ $$(`.step[data-stage="${k}"]`).forEach(e=>e.classList.add('hit'));
+    $$(`.mcell[data-stage="${k}"]`).forEach(e=>e.classList.add('on')); });
+}
+// telemetry source health
+function renderSources2(){
+  const online=/connected/.test(SENSOR);
+  SOURCES.forEach(s=>{
+    const dot=$('#srcdot-'+s.key), c=$('#srccount-'+s.key), st=$('#srcst-'+s.key);
+    if(c) c.textContent=TELEM[s.key]||0;
+    if(dot) dot.className='dot '+(online?'on pulse':'off');
+    if(st){ st.textContent=online?'streaming':'offline'; st.style.color=online?'var(--green)':'var(--red)'; }
   });
 }
-function markStage(k, animate){
-  document.querySelectorAll(`.stage[data-stage="${k}"]`).forEach(e=>{
-    e.classList.add('fired'); if(animate){e.classList.add('just');setTimeout(()=>e.classList.remove('just'),700);}
-  });
-  document.querySelectorAll(`.tech-card[data-stage="${k}"]`).forEach(e=>e.classList.add('fired'));
-  const fired = document.querySelectorAll('.stage.fired').length;
-  $('#chain-tag').textContent = `${fired} / 7 stages triggered`;
+
+// ================= live rows =================
+function fmtTime(ts){const d=new Date(ts);return isNaN(d)?'—':d.toLocaleTimeString('en-GB');}
+function prependRow(a,isNew){
+  const em=$('#alerts-empty'); if(em) em.style.display='none';
+  const body=$('#alerts-body');
+  const tr=document.createElement('tr');
+  if(isNew) tr.className='newrow';
+  tr.innerHTML=`<td class="time">${fmtTime(a.ts)}</td>
+    <td><span class="sev-badge sev-${a.severity}">${a.severity}</span></td>
+    <td><span class="tid">${a.technique_id}</span><div class="tname">${a.stage_name}</div></td>
+    <td style="color:var(--txt2)">${a.phase}</td>
+    <td class="src">${a.src_ip||'n/a'}</td>
+    <td>${escapeHtml(a.description||'')}</td>`;
+  tr.onclick=()=>openDrawer(a);
+  body.insertBefore(tr,body.firstChild);
+  while(body.children.length>250) body.removeChild(body.lastChild);
 }
 
-function addAlert(a, isNew){
-  $('#feed-empty') && $('#feed-empty').remove();
-  const feed = $('#feed');
-  const div = document.createElement('div');
-  div.className = `alert ${a.severity}` + (isNew?' newin':'');
-  const t = new Date(a.ts).toLocaleTimeString();
-  div.innerHTML = `<div class="bar"></div><div class="body">
-      <div class="top">
-        <span class="sev ${a.severity}">${a.severity}</span>
-        <span class="sname">${a.stage_name}</span>
-        <span class="mid">${a.technique_id}</span>
-      </div>
-      <div class="desc">${escapeHtml(a.description)}</div>
-      <div class="meta"><span>⏱ ${t}</span><span>◈ ${a.phase}</span><span>src ${a.src_ip}</span></div>
-    </div>`;
-  div.onclick = ()=>openDrawer(a);
-  feed.insertBefore(div, feed.firstChild);
-  while(feed.children.length>120) feed.removeChild(feed.lastChild);
-
-  // timeline
-  const tl = $('#timeline'); const em = tl.querySelector('.empty'); if(em) em.remove();
-  const row = document.createElement('div');
-  row.className = `tl ${a.severity}`;
-  row.innerHTML = `<span class="tt">${t}</span><span class="td"></span><span class="tx">${a.stage_name} — ${a.technique_id}</span>`;
-  tl.insertBefore(row, tl.firstChild);
-  while(tl.children.length>60) tl.removeChild(tl.lastChild);
+function ingestAlert(a){
+  ALERTS.push(a);
+  FIRED.add(a.stage);
+  prependRow(a,true);
+  renderAll();
+  // flash relevant KPI + kill-chain pop
+  $$(`.step[data-stage="${a.stage}"]`).forEach(e=>{e.classList.add('just');setTimeout(()=>e.classList.remove('just'),650);});
+  ['#k-total','#k-'+a.severity].forEach(sel=>{const t=$(sel);const c=t&&t.closest('.kpi');if(c){c.classList.remove('flash');void c.offsetWidth;c.classList.add('flash');}});
 }
 
+// ================= drawer =================
 function openDrawer(a){
-  $('#d-sev').className = 'sev '+a.severity; $('#d-sev').textContent = a.severity;
-  $('#d-title').textContent = a.stage_name;
-  const rows = [
-    ['Stage', `#${a.stage_num} — ${a.stage_name}`],
+  $('#d-sev').className='sev-badge sev-'+a.severity; $('#d-sev').textContent=a.severity;
+  $('#d-title').textContent=a.stage_name;
+  const rows=[
+    ['Detection', a.stage_name],
     ['MITRE Technique', `${a.technique_id} · ${a.technique_name}`],
-    ['Kill-Chain Phase', a.phase],
-    ['Severity', a.severity.toUpperCase()],
-    ['Source IP', a.src_ip],
-    ['Detected (SOC)', new Date(a.ts).toLocaleString()],
-    ['Observed (Pi)', a.observed_ts ? new Date(a.observed_ts).toLocaleString() : '—'],
-    ['Description', a.description],
+    ['Tactic / Phase', a.phase],
+    ['Severity', (a.severity||'').toUpperCase()],
+    ['Source', a.src_ip||'n/a'],
+    ['Detected', new Date(a.ts).toLocaleString('en-GB')],
+    ['Observed', a.observed_ts?new Date(a.observed_ts).toLocaleString('en-GB'):'—'],
+    ['Description', a.description||''],
   ];
-  let html = rows.map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v ${k==='Source IP'?'mono':''}">${escapeHtml(String(v))}</div></div>`).join('');
-  if(a.detail && Object.keys(a.detail).length)
-    html += `<pre class="detail">${escapeHtml(JSON.stringify(a.detail,null,2))}</pre>`;
-  $('#d-body').innerHTML = html;
-  $('#drawer').classList.add('open');
+  let h=rows.map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v ${/Source|MITRE/.test(k)?'mono':''}">${escapeHtml(String(v))}</div></div>`).join('');
+  if(a.detail&&Object.keys(a.detail).length) h+=`<pre class="raw">${escapeHtml(JSON.stringify(a.detail,null,2))}</pre>`;
+  $('#d-body').innerHTML=h; $('#drawer').classList.add('open'); $('#scrim').classList.add('open');
 }
-function closeDrawer(){ $('#drawer').classList.remove('open'); }
+function closeDrawer(){$('#drawer').classList.remove('open');$('#scrim').classList.remove('open');}
 
+// ================= status =================
 function setSensor(s){
-  $('#sensortext').textContent = 'sensor: '+s;
-  const d=$('#sensordot');
-  d.className='dot'+(/connected/.test(s)?' live':(/retry|disconnect|fail|offline/.test(s)?' warn':''));
-  $('#arr2').classList.toggle('beam', /connected/.test(s));
+  SENSOR=s||''; const on=/connected/.test(s), warn=/retry|disconnect|connecting/.test(s);
+  $('#setext').textContent='sensor: '+(on?'online':(warn?'connecting':'offline'));
+  $('#sedot').className='dot '+(on?'on pulse':(warn?'warn':'off'));
+  $('#f-status').textContent=on?'live':'down';
+  renderSources2();
 }
+function setWS(up){ $('#wsdot').className='dot '+(up?'on':'off'); $('#wstext').textContent=up?'connected':'reconnecting'; }
 
-let flashArr=null;
-function attackBeam(){ $('#arr1').classList.add('beam'); clearTimeout(flashArr);
-  flashArr=setTimeout(()=>$('#arr1').classList.remove('beam'),4000); }
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// ================= nav =================
+$$('.nav').forEach(n=>n.onclick=()=>{
+  const id=n.dataset.go==='killchain'?'overview':n.dataset.go;
+  const el=$('#'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+});
+window.addEventListener('scroll',()=>{
+  const secs=['overview','alerts','attack','detections'];
+  let cur='overview';
+  for(const id of secs){const el=$('#'+id);if(el&&el.getBoundingClientRect().top<160)cur=id;}
+  $$('.nav').forEach(n=>{const g=n.dataset.go==='killchain'?'overview':n.dataset.go;n.classList.toggle('active',g===cur);});
+},{passive:true});
 
-// ---- websocket ----
+// ================= websocket =================
 function connect(){
-  const ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen = ()=>{ $('#wsdot').className='dot live'; $('#wstext').textContent='connected'; };
-  ws.onclose = ()=>{ $('#wsdot').className='dot warn'; $('#wstext').textContent='reconnecting…'; setTimeout(connect,2000); };
-  ws.onmessage = e=>{
-    const m = JSON.parse(e.data);
+  const ws=new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen=()=>setWS(true);
+  ws.onclose=()=>{setWS(false);setTimeout(connect,2000);};
+  ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
     if(m.type==='status'){ setSensor(m.sensor); }
     else if(m.type==='telemetry'){
-      const ev=m.event;
-      $('#ticker').textContent = `▸ ${ev.source}/${ev.event} `+
-        Object.entries(ev).filter(([k])=>!['ts','source','event'].includes(k))
-        .map(([k,v])=>`${k}=${v}`).join(' ');
+      const ev=m.event; if(ev&&ev.source){ TELEM[ev.source]=(TELEM[ev.source]||0)+1; renderSources2(); }
+      const extra=Object.entries(ev).filter(([k])=>!['ts','source','event'].includes(k)).map(([k,v])=>`${k}=${v}`).join(' ');
+      $('#ticker').textContent=`${ev.source}/${ev.event}  ${extra}`;
     }
-    else if(m.type==='alert'){
-      applyCounts(m.counts);
-      markStage(m.alert.stage, true);
-      addAlert(m.alert, true);
-      attackBeam();
-      pulseCounter(m.alert.severity);
-    }
+    else if(m.type==='alert'){ if(m.counts)COUNTS=m.counts; ingestAlert(m.alert); }
   };
-}
-function pulseCounter(sev){
-  ['total',sev].forEach(k=>{const el=$('#c-'+k)?.closest('.stat'); if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}});
 }
 boot();
 </script>
