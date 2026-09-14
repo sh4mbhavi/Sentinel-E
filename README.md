@@ -1,17 +1,29 @@
-# Sentinel-E — Real-Time IoT Threat Detection Platform
+# Sentinel-E — Real-Time SOC Detection Platform
 
-Sentinel-E is a miniature **Security Operations Centre (SOC)** that watches a
-deliberately-vulnerable IoT security camera and detects a full red-team attack
-chain **as it happens**, in real time, then visualises it on a live web console.
+Sentinel-E is a lightweight **Security Operations Centre (SOC)** platform. It
+ingests live host and network telemetry, applies a **detection ruleset mapped to
+MITRE ATT&CK** across the cyber kill chain, correlates the results into
+prioritised alerts, and streams them to a live web console in real time.
 
-It was built for a university ethical-hacking (red vs blue) assignment. A Kali
-attacker compromises a Raspberry Pi camera panel through seven stages; Sentinel-E
-(the blue team) streams telemetry off the Pi, runs detection rules, and lights up
-each kill-chain stage on the dashboard the moment it fires.
+The ruleset targets **common intrusion techniques** rather than any single
+exploit — network reconnaissance, credential brute-forcing, command injection /
+RCE, command-and-control over non-standard ports, privilege escalation,
+persistence, and data exfiltration. Every rule is **behavioural and
+threshold-driven**: it fires on the activity pattern (e.g. "one source touches
+many ports in a short window"), not on a hardcoded signature, so it generalises
+to any monitored host emitting the same telemetry.
 
-> **Everything here is real.** The detections consume live telemetry from the Pi
-> over the network; the attack replay actually exploits the panel's command-
-> injection vulnerability. Nothing is faked or pre-recorded.
+To prove the pipeline end to end, Sentinel-E is validated against a live
+adversary scenario: a Kali attacker compromising a deliberately-vulnerable IoT
+security camera (a Raspberry Pi admin panel) through a full seven-stage kill
+chain. The SOC streams telemetry off the target, detects every stage as it
+happens, and lights up the kill chain and ATT&CK matrix on the dashboard.
+
+It was built for a university ethical-hacking (red vs blue) assignment.
+
+> **Everything here is real.** Detections run on live telemetry streamed from the
+> monitored host; the validation attack genuinely exploits the target. Nothing is
+> faked or pre-recorded.
 
 ---
 
@@ -46,17 +58,34 @@ All three machines sit on a **Tailscale** overlay network. See
 
 ---
 
-## The seven-stage attack chain (what Sentinel-E detects)
+## Detection coverage — common attack techniques (MITRE ATT&CK)
 
-| # | Stage | IoC | MITRE | Kill-chain | Severity |
-|---|-------|-----|-------|-----------|----------|
-| 1 | Reconnaissance | many ports probed from one IP in a short window | **T1046** Network Service Discovery | Reconnaissance | medium |
-| 2 | Credential brute-force | many failed `/login` POSTs from one IP | **T1110** Brute Force | Weaponisation/Delivery | high |
-| 3 | Command injection | shell metachars / `$(...)` in the ping `host` field | **T1059** Command & Scripting Interpreter | Exploitation | high |
-| 4 | Reverse shell / C2 | outbound Pi connection to non-standard port (4444) | **T1571** Non-Standard Port | Installation | critical |
-| 5 | Privilege escalation | web user `clupai` → uid 0 via sudo in the auth log | **T1548** Abuse Elevation Control | Exploitation/Installation | critical |
-| 6 | Persistence | new UID-0 account in `/etc/passwd`; `sshd_config` change | **T1136** Create Account | Command & Control | critical |
-| 7 | Exfiltration | read of `/root/camera_config.secret` + outbound transfer | **T1041/T1048** Exfiltration | Actions on Objectives | critical |
+Sentinel-E ships behavioural detection rules for the technique classes below.
+Each rule is configurable in `config/sentinel.conf.json` and mapped to a MITRE
+ATT&CK technique and cyber-kill-chain phase. The IoT-camera scenario exercises
+all of them in sequence, but the rules apply to **any** monitored host that
+emits the same authentication, process, network and file-integrity telemetry.
+
+| Technique class | What the rule detects (behavioural) | MITRE ATT&CK | Kill-chain phase | Severity |
+|---|---|---|---|---|
+| Network reconnaissance | one source probing many distinct ports in a short window | **T1046** Network Service Discovery | Reconnaissance | medium |
+| Credential brute-force | repeated failed authentications from one source | **T1110** Brute Force | Weaponisation / Delivery | high |
+| Command injection / RCE | shell metacharacters / command-substitution in web input | **T1059** Command & Scripting Interpreter | Exploitation | high |
+| C2 / reverse shell | outbound connection to a non-standard / suspicious port | **T1571** Non-Standard Port | Installation | critical |
+| Privilege escalation | a service/web user escalating to uid 0 via sudo | **T1548** Abuse Elevation Control Mechanism | Exploitation / Installation | critical |
+| Persistence | a new UID-0 account or an `sshd_config` modification | **T1136** Create Account | Command & Control | critical |
+| Data exfiltration | sensitive-file read correlated with an outbound transfer | **T1041 / T1048** Exfiltration | Actions on Objectives | critical |
+
+Coverage is extensible by design: a new detection is a rule in
+`detection/rules.py` plus a threshold in the config — no architectural change.
+
+### Validation scenario — the seven-stage attack chain
+
+The rules above are demonstrated against a real intrusion of the IoT camera:
+recon (nmap) → brute-force (hydra) → command injection (`$(...)` filter bypass)
+→ reverse shell → sudo privilege escalation → backdoor account + `sshd` change →
+secret-file exfiltration. The exact indicator of compromise for each stage is
+mapped in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Diagram 3).
 
 ---
 
@@ -67,11 +96,11 @@ All three machines sit on a **Tailscale** overlay network. See
 | `pi/camera_panel.py` | Pi `:8080` | The vulnerable panel, **modified** to log every login/ping as structured JSON (to a JSONL file + syslog). The vulnerability is left intact. |
 | `pi/sentinel_sensor.py` | Pi (root) | Real-time sensor merging `journalctl`/`tcpdump`/`inotifywait` into one JSON stream on stdout. |
 | `detection/ingest.py` | SOC | Holds a persistent SSH connection to the Pi and reads the sensor stream live (no polling). |
-| `detection/rules.py` | SOC | The detection engine: seven stateful rules, correlation, MITRE/severity metadata. |
+| `detection/rules.py` | SOC | The detection engine: one behavioural rule per technique class, event correlation, and MITRE/kill-chain/severity metadata. |
 | `detection/store.py` | SOC | Alert persistence (JSON-lines **and** SQLite). |
 | `detection/server.py` | SOC | The main asyncio server: ingest → engine → store → websocket → dashboard. |
 | `dashboard/index.html` | SOC (browser) | The live SOC console. |
-| `attack/replay.py` | SOC | Reproducible attack driver that runs the whole chain against the Pi. |
+| `attack/replay.py` | SOC | Reproducible validation harness that runs the whole attack chain against the target. |
 | `config/sentinel.conf.json` | SOC | All tunable thresholds and the network map. |
 
 ---

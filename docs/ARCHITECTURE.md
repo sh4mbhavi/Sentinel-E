@@ -1,5 +1,10 @@
 # Sentinel-E — Architecture
 
+Sentinel-E is a general real-time SOC pipeline — telemetry ingestion → a
+behavioural detection engine (rules mapped to MITRE ATT&CK) → alert store → live
+dashboard. The diagrams below use the IoT-camera intrusion as the concrete
+validation scenario, but the pipeline and rules are host-agnostic.
+
 This document describes the system precisely enough to draw **three diagrams**
 directly from the text. For each diagram every component, connection, direction,
 data payload, and label is listed explicitly.

@@ -1,9 +1,10 @@
 # Sentinel-E — Mitigations
 
 Sentinel-E is the **blue-team detection** layer. This document is the other half
-of the defence: for each of the seven attack stages, the concrete change that
-would **prevent** it (or sharply raise the cost) on a production IoT device.
-Detection tells you an attack happened; these fixes stop it happening.
+of the defence: for each technique the platform detects — shown here against the
+seven-stage validation scenario — the concrete change that would **prevent** it
+(or sharply raise the cost) on a production host/IoT device. Detection tells you
+an attack happened; these fixes stop it happening.
 
 Ordered by the kill chain, so fixes early in the chain protect everything after.
 
