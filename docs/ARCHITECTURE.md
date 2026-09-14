@@ -9,6 +9,19 @@ This document describes the system precisely enough to draw **three diagrams**
 directly from the text. For each diagram every component, connection, direction,
 data payload, and label is listed explicitly.
 
+## Deployment profiles
+
+The pipeline is identical in both profiles; only the **telemetry source** differs.
+
+| Profile | Telemetry source | Use |
+|---------|------------------|-----|
+| **Hardware** (`config/sentinel.conf.json`) | the on-device sensor, streamed to the SOC over a persistent SSH connection | live cyber range against a real target |
+| **Demo** (`config/demo.conf.json`) | a local generator (`demo/sim_sensor.py`) emitting the identical event schema | hardware-free, single-machine evaluation |
+
+`detection/ingest.py` selects the source from `sensor.mode`; everything downstream
+— engine, correlation, alert store, WebSocket, dashboard — is byte-for-byte the
+same. The demo therefore exercises the **real detection engine**, not a mock.
+
 ---
 
 ## Diagram 1 — Network / Topology

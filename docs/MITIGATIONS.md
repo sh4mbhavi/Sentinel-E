@@ -1,12 +1,15 @@
-# Sentinel-E — Mitigations
+# Sentinel-E — Mitigations & Hardening Playbook
 
-Sentinel-E is the **blue-team detection** layer. This document is the other half
-of the defence: for each technique the platform detects — shown here against the
-seven-stage validation scenario — the concrete change that would **prevent** it
-(or sharply raise the cost) on a production host/IoT device. Detection tells you
-an attack happened; these fixes stop it happening.
+Detection is half of the defence; prevention is the other half. For every
+technique Sentinel-E detects — demonstrated here against the platform's
+seven-stage reference intrusion — this playbook gives the concrete control that
+**stops** it (or sharply raises the attacker's cost) on a production host or IoT
+device. Detection tells you an attack happened; these fixes stop it happening.
 
-Ordered by the kill chain, so fixes early in the chain protect everything after.
+Controls are ordered along the kill chain, so a fix applied early protects every
+stage that would otherwise follow. Together they form a defence-in-depth posture
+you can apply and then re-run the attack against to prove it fails (see the
+mitigations exercise in [`../LAB_GUIDE.md`](../LAB_GUIDE.md)).
 
 ---
 
