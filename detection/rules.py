@@ -80,7 +80,10 @@ class DetectionEngine:
 
         # correlation state for exfiltration (sensitive read + outbound transfer)
         self._last_secret_access = 0.0
-        self._last_outbound_xfer = (0.0, None)   # (t, dst_ip)
+        # a "transfer channel" that can carry data off the device: either an
+        # outbound connection FROM the Pi, or an inbound SSH/scp session TO the
+        # Pi from an external host (a pull, e.g. `scp attacker@pi:/root/secret`).
+        self._last_transfer = (0.0, None, None)   # (t, peer_ip, label)
 
         # per-stage cooldown so a burst -> a single alert
         self._last_fired = {}                     # (stage, key) -> t
@@ -162,21 +165,33 @@ class DetectionEngine:
                     observed_ts=ev.get("ts"),
                     ports=sorted(distinct)))
 
-        # ---- STAGE 4 & exfil-correlation: outbound connections ------------
-        if src == "net" and ev.get("event") == "syn" and ev.get("direction") == "outbound":
+        # ---- STAGE 4 (reverse shell) + exfil transfer-channel tracking ----
+        if src == "net" and ev.get("event") == "syn":
+            direction = ev.get("direction")
             dport = ev.get("dst_port")
+            sport = ev.get("src_port")
             dst = ev.get("dst_ip")
-            # reverse shell / C2 on a non-standard port
-            if dport in self.cfg["reverse_shell"]["suspicious_ports"] and \
-                    self._cooldown_ok("reverse_shell", f"{dst}:{dport}", now):
-                alerts.append(self._alert(
-                    "reverse_shell", self.pi_ip,
-                    f"Outbound connection from target to {dst}:{dport} — "
-                    f"non-standard C2/reverse-shell port.",
-                    observed_ts=ev.get("ts"), dst_ip=dst, dst_port=dport))
-            # remember any egress for exfil correlation
-            self._last_outbound_xfer = (now, dst)
-            alerts += self._maybe_exfil(now, ev.get("ts"))
+            srcip = ev.get("src_ip")
+            if direction == "outbound":
+                # reverse shell / C2 on a non-standard port
+                if dport in self.cfg["reverse_shell"]["suspicious_ports"] and \
+                        self._cooldown_ok("reverse_shell", f"{dst}:{dport}", now):
+                    alerts.append(self._alert(
+                        "reverse_shell", self.pi_ip,
+                        f"Outbound connection from target to {dst}:{dport} — "
+                        f"non-standard C2/reverse-shell port.",
+                        observed_ts=ev.get("ts"), dst_ip=dst, dst_port=dport))
+                # any Pi-initiated egress is a transfer channel (push exfil)
+                self._last_transfer = (now, dst, f"outbound channel to {dst}:{dport}")
+                alerts += self._maybe_exfil(now, ev.get("ts"))
+            elif direction == "inbound" and (dport == 22 or sport == 22) \
+                    and srcip and srcip != self.soc_ip:
+                # An inbound SSH/scp/sftp session from an external host is a
+                # channel that can PULL data off the device — e.g.
+                #   scp attacker@pi:/root/camera_config.secret .
+                # (The SOC's own management SSH is excluded by IP.)
+                self._last_transfer = (now, srcip, f"SSH/scp session with {srcip}")
+                alerts += self._maybe_exfil(now, ev.get("ts"))
 
         # ---- STAGE 2: Brute force (hydra) ---------------------------------
         if src == "panel" and ev.get("event") == "login" and ev.get("success") is False:
@@ -246,10 +261,11 @@ class DetectionEngine:
         return alerts
 
     def _maybe_exfil(self, now, observed_ts):
-        """Fire exfiltration only when a sensitive-file read and an outbound
-        transfer occur within the correlation window."""
+        """Fire exfiltration only when a sensitive-file read and a data-transfer
+        channel (Pi-initiated egress OR an inbound SSH/scp pull) occur within the
+        correlation window."""
         win = self.cfg["correlation_window_seconds"]
-        xfer_t, xfer_dst = self._last_outbound_xfer
+        xfer_t, peer, label = self._last_transfer
         if self._last_secret_access and xfer_t and \
                 abs(now - self._last_secret_access) <= win and \
                 (now - xfer_t) <= win and \
@@ -257,6 +273,6 @@ class DetectionEngine:
             return [self._alert(
                 "exfiltration", self.pi_ip,
                 f"Sensitive file /root/camera_config.secret was read and data "
-                f"was sent outbound to {xfer_dst} within {win}s — data exfiltration.",
-                observed_ts=observed_ts, dst_ip=xfer_dst)]
+                f"left the device via {label} within {win}s — data exfiltration.",
+                observed_ts=observed_ts, dst_ip=peer)]
         return []
