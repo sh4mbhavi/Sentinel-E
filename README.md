@@ -19,9 +19,9 @@
 
 ## What is Sentinel-E?
 
-**Sentinel-E is a self-contained Security Operations Centre (SOC) in a box.** It ingests a live stream of host and network telemetry, runs a behavioural detection engine whose rules are mapped to the MITRE ATT&CK framework, correlates findings across the cyber kill chain, and streams prioritised alerts to a professional real-time web console — no page refresh, no polling, no batch jobs.
+**Sentinel-E is a self-contained Security Operations Centre (SOC) in a box.** It ingests a live stream of host and network telemetry, runs a behavioural detection engine whose rules are mapped to the MITRE ATT&CK framework, correlates findings across the cyber kill chain, and streams prioritised alerts to a professional real-time web console, no page refresh, no polling, no batch jobs.
 
-It ships with a complete **IoT cyber range**: a deliberately vulnerable smart-camera admin panel as the target, a scripted adversary that drives a genuine seven-stage intrusion, and the blue-team detection stack that catches every stage live. Every alert on the dashboard is produced by the detection engine reasoning over real telemetry — nothing is pre-recorded or faked.
+It ships with a complete **IoT cyber range**: a deliberately vulnerable smart-camera admin panel as the target, a scripted adversary that drives a genuine seven-stage intrusion, and the blue-team detection stack that catches every stage live. Every alert on the dashboard is produced by the detection engine reasoning over real telemetry, nothing is pre-recorded or faked.
 
 Two ways to run it:
 
@@ -84,7 +84,7 @@ cd Sentinel-E
 
 Then open **http://localhost:8770/** in your browser.
 
-The launcher bootstraps a virtualenv, installs the single dependency (`aiohttp`), and starts the platform. About seven seconds after the dashboard loads, a simulated adversary begins a seven-stage intrusion — watch the **cyber kill chain fill in, the ATT&CK matrix light up, the charts climb, and the alert feed stream** in real time as each stage is detected.
+The launcher bootstraps a virtualenv, installs the single dependency (`aiohttp`), and starts the platform. About seven seconds after the dashboard loads, a simulated adversary begins a seven-stage intrusion, watch the **cyber kill chain fill in, the ATT&CK matrix light up, the charts climb, and the alert feed stream** in real time as each stage is detected.
 
 > **It's real detection.** The demo emits raw telemetry (the same schema a compromised device produces) and the **unmodified detection engine** decides every alert by crossing its real thresholds and correlation windows. No alert is hard-coded.
 
@@ -133,7 +133,7 @@ Sentinel-E ships behavioural detections for the following technique classes. Eac
 | 6 | Command & Control | new UID-0 account or `sshd_config` modification | **T1136** — Create Account | `critical` |
 | 7 | Actions on Objectives | sensitive-file read correlated with an egress channel | **T1041 / T1048** — Exfiltration | `critical` |
 
-Coverage is extensible by design — a new detection is a rule in `detection/rules.py` plus a threshold in config. Full IoC-to-rule mapping: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) → Attack-to-Detection Mapping**.
+Coverage is extensible by design, a new detection is a rule in `detection/rules.py` plus a threshold in config. Full IoC-to-rule mapping: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) → Attack-to-Detection Mapping**.
 
 ---
 
@@ -174,7 +174,7 @@ Every script and component is documented in **[SCRIPTS.md](SCRIPTS.md)**.
 
 ## 🛡️ Responsible use
 
-Sentinel-E includes offensive tooling and an intentionally vulnerable service **for defensive research and controlled lab use only**. Run the attack drivers exclusively against the bundled target — the hardware-free demo, or hardware you own and are authorised to test. Never point them at systems you do not control.
+Sentinel-E includes offensive tooling and an intentionally vulnerable service **for defensive research and controlled lab use only**. Run the attack drivers exclusively against the bundled target, the hardware-free demo, or hardware you own and are authorised to test. Never point them at systems you do not control.
 
 ---
 
