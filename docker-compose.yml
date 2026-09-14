@@ -1,0 +1,14 @@
+# Sentinel-E — hardware-free demo cyber range in a container.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:8770/  — the simulated seven-stage intrusion begins
+# shortly after the dashboard loads, detected live by the real engine.
+services:
+  sentinel-e:
+    build: .
+    image: sentinel-e:latest
+    container_name: sentinel-e-demo
+    ports:
+      - "8770:8770"
+    restart: unless-stopped

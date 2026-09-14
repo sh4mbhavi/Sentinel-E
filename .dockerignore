@@ -1,0 +1,19 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+# runtime data — never bake alert stores into the image
+detection/alerts.jsonl
+detection/alerts.db
+detection/demo_alerts.jsonl
+detection/demo_alerts.db
+*.log
+*.out
+scratchpad*
+# secrets / keys — never
+*.key
+*.pem
+id_*
+*_key
+.env

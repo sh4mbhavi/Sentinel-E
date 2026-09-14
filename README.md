@@ -88,6 +88,12 @@ The launcher bootstraps a virtualenv, installs the single dependency (`aiohttp`)
 
 > **It's real detection.** The demo emits raw telemetry (the same schema a compromised device produces) and the **unmodified detection engine** decides every alert by crossing its real thresholds and correlation windows. No alert is hard-coded.
 
+**Prefer containers?** The same demo runs anywhere Docker does:
+
+```bash
+docker compose up --build      # then open http://localhost:8770/
+```
+
 ---
 
 ## 🧭 Usage paths
