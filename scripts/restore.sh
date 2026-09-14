@@ -21,9 +21,11 @@ set +e
 # --- lift the immutable flag so state can change again ---
 chattr -i /etc/passwd 2>/dev/null && echo "  [+] /etc/passwd mutable again"
 # --- restart the vulnerable panel ---
+chown clupai:clupai /home/clupai/camera_panel.py 2>/dev/null || true
 pkill -f '[c]amera_panel' || true
 sleep 1
-cd /home/clupai && setsid nohup python3 camera_panel.py >/home/clupai/sentinel/panel.out 2>&1 </dev/null &
+# start the panel as the unprivileged web-service user, not root
+runuser -u clupai -- bash -c 'cd /home/clupai && setsid nohup python3 camera_panel.py >/home/clupai/sentinel/panel.out 2>&1 </dev/null' &
 sleep 1
 echo "  [+] vulnerable panel running: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/login)"
 # --- remove the egress deny rules ---

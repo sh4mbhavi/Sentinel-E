@@ -30,9 +30,11 @@ set -e
 # --- back up the vulnerable panel, swap in the hardened one, restart ---
 [ -f /home/clupai/camera_panel.vulnerable.py ] || cp /home/clupai/camera_panel.py /home/clupai/camera_panel.vulnerable.py
 cp /home/clupai/camera_panel_hardened.py /home/clupai/camera_panel.py
+chown clupai:clupai /home/clupai/camera_panel.py
 pkill -f '[c]amera_panel' || true
 sleep 1
-cd /home/clupai && setsid nohup python3 camera_panel.py >/home/clupai/sentinel/panel.out 2>&1 </dev/null &
+# start the panel as the unprivileged web-service user, not root
+runuser -u clupai -- bash -c 'cd /home/clupai && setsid nohup python3 camera_panel.py >/home/clupai/sentinel/panel.out 2>&1 </dev/null' &
 sleep 1
 echo "  [+] hardened panel running: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/login)"
 
